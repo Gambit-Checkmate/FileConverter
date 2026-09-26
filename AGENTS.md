@@ -6,7 +6,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 FileConverter is a file conversion tool with two packages:
 - `packages/core` — TypeScript CLI and conversion engine (ready for use)
-- `packages/gui` — Tauri + React desktop application (still in development)
+- `packages/gui` — Electron + React desktop application
 
 All conversions use pure npm packages. No external system programs (Pandoc, Ghostscript, LibreOffice, etc.) are required.
 
