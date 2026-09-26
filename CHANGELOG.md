@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.7.0](https://github.com/Marentius/FileConverter/compare/fileconverter-v1.6.1...fileconverter-v1.7.0) (2026-09-26)
+
+
+### Features
+
+* **gui:** attach desktop builds to GitHub releases ([2d9744c](https://github.com/Marentius/FileConverter/commit/2d9744c92a1c64c8c35b95bdd8e0192a440d97bd))
+* **gui:** migrate desktop app from Tauri to Electron ([267e6d4](https://github.com/Marentius/FileConverter/commit/267e6d4427468cee2358ff92e3a793f0077cead4))
+
+
+### Bug Fixes
+
+* **deps:** override vulnerable tar in Electron tooling ([2d06c11](https://github.com/Marentius/FileConverter/commit/2d06c11fc64a7dd2066e25c9523aaa767b7cf25b))
+* **deps:** upgrade package lock file and force release ([bb540c4](https://github.com/Marentius/FileConverter/commit/bb540c4839c54eab8d838095c9216c07383473fa))
+* **gui:** build core before desktop worker tests ([21ef0d5](https://github.com/Marentius/FileConverter/commit/21ef0d5def6a4046e6ed4fdb385d4a9d97b96d87))
+
 ## [1.6.1](https://github.com/Marentius/FileConverter/compare/fileconverter-v1.6.0...fileconverter-v1.6.1) (2026-08-09)
 
 
