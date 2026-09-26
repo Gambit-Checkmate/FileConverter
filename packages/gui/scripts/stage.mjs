@@ -4,9 +4,20 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const guiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const projectRoot = path.resolve(guiRoot, '../..');
 const coreRoot = path.resolve(guiRoot, '../core');
 const stageRoot = path.join(guiRoot, '.stage');
 const guiPackage = JSON.parse(fs.readFileSync(path.join(guiRoot, 'package.json'), 'utf8'));
+const projectPackage = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
+const npmCli = process.env.npm_execpath;
+
+if (!npmCli) {
+  throw new Error('Run this script through npm so its CLI path is available.');
+}
+
+function runNpm(args, options) {
+  return execFileSync(process.execPath, [npmCli, ...args], options);
+}
 
 fs.rmSync(stageRoot, { recursive: true, force: true });
 fs.mkdirSync(stageRoot, { recursive: true });
@@ -16,7 +27,7 @@ for (const name of ['dist', 'electron', 'icons']) {
 }
 fs.copyFileSync(path.join(guiRoot, 'forge.config.cjs'), path.join(stageRoot, 'forge.config.cjs'));
 
-const packResult = JSON.parse(execFileSync('npm', [
+const packResult = JSON.parse(runNpm([
   'pack', coreRoot, '--ignore-scripts', '--pack-destination', stageRoot, '--json',
 ], { cwd: guiRoot, encoding: 'utf8' }));
 const tarball = packResult[0].filename;
@@ -24,7 +35,7 @@ const tarball = packResult[0].filename;
 fs.writeFileSync(path.join(stageRoot, 'package.json'), JSON.stringify({
   name: 'fileconverter-desktop',
   productName: guiPackage.productName,
-  version: guiPackage.version,
+  version: projectPackage.version,
   main: 'electron/main.cjs',
   dependencies: {
     '@fileconverter/core': `file:./${tarball}`,
@@ -36,7 +47,7 @@ fs.writeFileSync(path.join(stageRoot, 'package.json'), JSON.stringify({
   },
 }, null, 2));
 
-execFileSync('npm', ['install', '--omit=dev', '--no-package-lock'], {
+runNpm(['install', '--omit=dev', '--no-package-lock'], {
   cwd: stageRoot,
   stdio: 'inherit',
 });
