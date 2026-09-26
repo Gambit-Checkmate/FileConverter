@@ -79,6 +79,7 @@ jobs:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
