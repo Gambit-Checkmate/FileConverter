@@ -2,7 +2,6 @@
   "name": "@fileconverter/gui",
   "productName": "FileConverter",
   "private": true,
-  "version": "1.0.0",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -10,7 +9,7 @@
     "build": "tsc && vite build",
     "package": "npm run build --workspace @fileconverter/core && npm run build && node scripts/stage.mjs && node scripts/package.mjs package",
     "make": "npm run build --workspace @fileconverter/core && npm run build && node scripts/stage.mjs && node scripts/package.mjs make",
-    "test": "tsc --noEmit && node --check electron/main.cjs && node --check electron/preload.cjs && node --test test/*.test.cjs"
+    "test": "npm run build --workspace=@fileconverter/core && tsc --noEmit && node --check electron/main.cjs && node --check electron/preload.cjs && node --test test/*.test.cjs"
   },
   "dependencies": {
     "@fileconverter/core": "file:../core",

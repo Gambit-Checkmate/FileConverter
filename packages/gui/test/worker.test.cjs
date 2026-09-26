@@ -12,6 +12,8 @@ function requestConversion(inputPaths, outputDir, format) {
   return new Promise((resolve, reject) => {
     const child = fork(workerPath, [], { stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
     let settled = false;
+    let stderr = '';
+    child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
     child.on('message', (message) => {
       settled = true;
       if (message.ok) resolve(message.result);
@@ -20,7 +22,7 @@ function requestConversion(inputPaths, outputDir, format) {
     });
     child.on('error', reject);
     child.on('exit', (code) => {
-      if (!settled) reject(new Error(`Worker exited before returning a result: ${code}`));
+      if (!settled) reject(new Error(`Worker exited before returning a result: ${code}. ${stderr.trim()}`));
     });
     child.send({ inputPaths, outputDir, format });
   });

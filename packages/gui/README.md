@@ -22,4 +22,6 @@ npm run gui:build
 
 This builds core and the renderer, then creates a platform-specific app under `packages/gui/out/`. To create a ZIP distributable, run `npm run make --workspace @fileconverter/gui`. Build separately on Windows, macOS, and Linux for each platform.
 
+The desktop app uses the version from the root `package.json`. After a release-please release, GitHub Actions builds and attaches Linux x64, Windows x64, and macOS arm64 ZIP files to that GitHub release. The desktop app is not published to npm. Pull requests also build the ZIP on all three platforms so packaging failures are caught before release.
+
 The app uses Electron's native file and directory dialogs. The renderer has no Node.js access. Conversion runs in a separate bundled Node.js process through a small preload API. This keeps image processing isolated from the UI and avoids a known Sharp/Electron conflict on Linux.
