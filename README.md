@@ -193,7 +193,7 @@ FileConverter/
 │   │   │   ├── presets/       # Image presets
 │   │   │   └── config/        # Preset management
 │   │   └── test/
-│   └── gui/                   # Tauri + React desktop app (WIP)
+│   └── gui/                   # Electron + React desktop app
 └── package.json               # Workspace root
 ```
 
@@ -261,7 +261,7 @@ npx jest path/to/test.spec.ts
 | Build | tsup (CJS + ESM, targeting Node 22) |
 | Testing | Jest + ts-jest |
 | Linting | ESLint 10 (flat config) + TypeScript-ESLint |
-| Desktop GUI | Tauri + React (work in progress) |
+| Desktop GUI | Electron + React |
 
 ## Requirements
 

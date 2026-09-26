@@ -25,7 +25,7 @@ This installs all dependencies and builds the core package. No external system p
 FileConverter/
 ├── packages/
 │   ├── core/       # CLI + conversion engine (TypeScript)
-│   └── gui/        # Desktop app — Tauri + React (WIP)
+│   └── gui/        # Desktop app — Electron + React
 ├── package.json    # Workspace root
 └── ...
 ```

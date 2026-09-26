@@ -1,4 +1,3 @@
-/* Modern FileConverter GUI Styles */
 * {
   margin: 0;
   padding: 0;
@@ -33,31 +32,6 @@
   margin-bottom: 1rem;
 }
 
-.tabs {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.tab {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
-}
-
-.tab:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.tab.active {
-  background: rgba(255, 255, 255, 0.25);
-  font-weight: 500;
-}
-
 .main {
   flex: 1;
   padding: 2rem;
@@ -79,13 +53,6 @@
   margin-bottom: 1rem;
   font-size: 1.3rem;
   font-weight: 600;
-}
-
-.section h3 {
-  color: #555;
-  margin-bottom: 0.5rem;
-  font-size: 1.1rem;
-  font-weight: 500;
 }
 
 .file-select-btn, .folder-select-btn {
@@ -131,6 +98,25 @@
   font-size: 0.9rem;
   color: #495057;
   border-left: 3px solid #667eea;
+  overflow-wrap: anywhere;
+}
+
+.file-list p {
+  margin-bottom: 0.75rem;
+}
+
+.text-btn {
+  margin-top: 0.75rem;
+  padding: 0.4rem 0;
+  border: 0;
+  background: transparent;
+  color: #3949ab;
+  cursor: pointer;
+}
+
+.hint {
+  margin-top: 0.75rem;
+  color: #555;
 }
 
 .output-dir {
@@ -230,123 +216,12 @@
   border: 1px solid #f5c6cb;
 }
 
-.warning {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem;
-  background: #fff3cd;
-  color: #856404;
-  border: 1px solid #ffeaa7;
-  border-radius: 8px;
-  font-weight: 500;
-}
-
-.dependency-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.dependency-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
-  background: white;
-}
-
-.dependency-item.installed {
-  border-left: 4px solid #28a745;
-}
-
-.dependency-item.missing {
-  border-left: 4px solid #dc3545;
-}
-
-.dependency-name {
-  font-weight: 500;
-  color: #333;
-}
-
-.dependency-status {
-  color: #28a745;
-}
-
-.dependency-item.missing .dependency-status {
-  color: #dc3545;
-}
-
-.install-guide {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  padding: 1.5rem;
-}
-
-.install-guide h3 {
-  color: #333;
-  margin-bottom: 1rem;
-}
-
-.install-guide ul {
-  list-style: none;
-  padding: 0;
-}
-
-.install-guide li {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.install-guide li:last-child {
-  border-bottom: none;
-}
-
-.install-guide a {
-  color: #667eea;
-  text-decoration: none;
-}
-
-.install-guide a:hover {
-  text-decoration: underline;
-}
-
-.advanced-tab {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.advanced-tab ul {
-  margin-top: 1rem;
-  padding-left: 1.5rem;
-}
-
-.advanced-tab li {
-  margin-bottom: 0.5rem;
-  color: #555;
-}
-
-/* Responsive Design */
 @media (max-width: 768px) {
   .header {
     padding: 1rem;
   }
-  
+
   .main {
     padding: 1rem;
-  }
-  
-  .tabs {
-    flex-wrap: wrap;
-  }
-  
-  .dependency-grid {
-    grid-template-columns: 1fr;
   }
 }
