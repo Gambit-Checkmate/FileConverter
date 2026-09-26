@@ -59,15 +59,15 @@ jobs:
       - name: Package artifact
         shell: bash
         run: |
-          cd packages/core
-          mkdir -p release
-          cp -r dist release/
-          cp package.json release/
-          cd release
-          npm install --omit=dev --ignore-scripts
-          rm -rf node_modules/.cache
-          cd ..
-          tar -czf "fileconverter-${{ matrix.name }}.tar.gz" -C release .
+          # Keep the staged package outside the npm workspace. Installing from
+          # packages/core/release makes npm traverse the parent workspace and
+          # can fail while resolving its dependency tree.
+          release_dir="$(mktemp -d)"
+          cp -r packages/core/dist "$release_dir/"
+          cp packages/core/package.json "$release_dir/"
+          npm install --prefix "$release_dir" --omit=dev --ignore-scripts
+          rm -rf "$release_dir/node_modules/.cache"
+          tar -czf "packages/core/fileconverter-${{ matrix.name }}.tar.gz" -C "$release_dir" .
 
       - name: Upload artifact to release
         env:
