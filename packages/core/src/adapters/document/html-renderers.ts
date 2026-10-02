@@ -77,7 +77,14 @@ const PDF_ALLOWED_TAGS = [
   'ul', 'ol', 'li', 'table', 'tr', 'th', 'td', 'img', 'hr',
 ];
 
-function sanitizeHtmlForPdf(html: string): string {
+/**
+ * Sanitizes HTML content to prevent XSS vulnerabilities.
+ * Strips script tags, event handlers, javascript: URLs, and risky elements.
+ * Used for both PDF rendering and Office→HTML output.
+ * @param html - HTML content to sanitize
+ * @returns Sanitized HTML string
+ */
+export function sanitizeHtmlForPdf(html: string): string {
   return sanitizeHtml(html, {
     allowedTags: PDF_ALLOWED_TAGS,
     allowedAttributes: { img: ['src'] },

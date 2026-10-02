@@ -3,7 +3,7 @@ import path from 'path';
 import PDFDocument from 'pdfkit';
 import sharp from 'sharp';
 import { getTestFilePath } from './setup';
-import { renderHtmlToPdf, stripHtml } from '../src/adapters/document/html-renderers';
+import { renderHtmlToPdf, stripHtml, sanitizeHtmlForPdf } from '../src/adapters/document/html-renderers';
 
 async function extractPdfText(outputPath: string): Promise<string> {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
@@ -123,5 +123,68 @@ describe('stripHtml', () => {
     expect(text).toContain('Visible content');
     expect(text).not.toContain('SECRET_SCRIPT');
     expect(text).not.toContain('SECRET_STYLE');
+  });
+});
+
+describe('sanitizeHtmlForPdf', () => {
+  it('preserves safe HTML tags', () => {
+    const html = '<h1>Heading</h1><p>Text with <strong>bold</strong> and <em>italic</em>.</p><ul><li>Item</li></ul>';
+    const result = sanitizeHtmlForPdf(html);
+    expect(result).toContain('<h1>');
+    expect(result).toContain('<strong>');
+    expect(result).toContain('<em>');
+    expect(result).toContain('<ul>');
+  });
+
+  it('strips script tags and content', () => {
+    const html = '<p>Safe</p><script>alert("xss")</script>';
+    const result = sanitizeHtmlForPdf(html);
+    expect(result).not.toContain('<script');
+    expect(result).not.toContain('alert');
+    expect(result).toContain('Safe');
+  });
+
+  it('strips event handler attributes', () => {
+    const html = '<p onclick="alert(1)">Click me</p>';
+    const result = sanitizeHtmlForPdf(html);
+    expect(result).not.toContain('onclick');
+    expect(result).toContain('Click me');
+  });
+
+  it('strips javascript: URLs', () => {
+    const html = '<a href="javascript:alert(1)">Link</a>';
+    const result = sanitizeHtmlForPdf(html);
+    expect(result).not.toContain('javascript:');
+    expect(result).not.toContain('<a');
+  });
+
+  it('strips dangerous tags like iframe, object, and embed', () => {
+    const html = '<p>Text</p><iframe src="evil.com"></iframe><object data="evil.swf"></object><embed src="evil.swf">';
+    const result = sanitizeHtmlForPdf(html);
+    expect(result).not.toContain('<iframe');
+    expect(result).not.toContain('<object');
+    expect(result).not.toContain('<embed');
+    expect(result).toContain('Text');
+  });
+
+  it('allows data URIs for images', () => {
+    const html = '<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">';
+    const result = sanitizeHtmlForPdf(html);
+    expect(result).toContain('<img');
+    expect(result).toContain('data:image/png;base64');
+  });
+
+  it('strips http and https URLs from images', () => {
+    const html = '<img src="https://evil.com/image.png">';
+    const result = sanitizeHtmlForPdf(html);
+    expect(result).not.toContain('https://evil.com');
+  });
+
+  it('preserves table structure', () => {
+    const html = '<table><tr><th>Header</th></tr><tr><td>Cell</td></tr></table>';
+    const result = sanitizeHtmlForPdf(html);
+    expect(result).toContain('<table>');
+    expect(result).toContain('<th>');
+    expect(result).toContain('<td>');
   });
 });
