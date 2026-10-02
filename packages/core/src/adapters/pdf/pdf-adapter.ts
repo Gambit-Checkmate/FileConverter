@@ -5,15 +5,21 @@ import { BaseAdapter, ConversionParameters, ConversionResult } from '../base-ada
 import { ConversionPlan } from '../../types';
 import { validatePath } from '../../path-security';
 import logger from '../../logger';
+import {
+  isRasterImageFormat,
+  rasterizePdfToImages,
+  resolveDpi,
+} from './pdf-rasterizer';
 
 /**
- * PDF adapter using pdf-lib for merge, split, and basic optimization.
- * No external system dependencies required.
+ * PDF adapter using pdf-lib for merge, split, and basic optimization,
+ * and pdfjs + @napi-rs/canvas + Sharp for PDF → image rasterization.
+ * No external system binaries required.
  */
 export class PdfAdapter extends BaseAdapter {
   readonly name = 'pdf';
   readonly supportedInputFormats = ['pdf'];
-  readonly supportedOutputFormats = ['pdf', 'txt'];
+  readonly supportedOutputFormats = ['pdf', 'txt', 'png', 'jpg', 'jpeg', 'webp'];
 
   async convert(
     plan: ConversionPlan,
@@ -33,7 +39,29 @@ export class PdfAdapter extends BaseAdapter {
       const originalSize = fs.statSync(plan.inputPath).size;
       let result: ConversionResult;
 
-      if (plan.outputFormat === 'txt') {
+      if (isRasterImageFormat(plan.outputFormat)) {
+        const raster = await rasterizePdfToImages({
+          inputPath: plan.inputPath,
+          outputPath: plan.outputPath,
+          outputFormat: plan.outputFormat,
+          dpi: typeof parameters.dpi === 'number' ? parameters.dpi : undefined,
+          pages: parameters.pages,
+          quality: typeof parameters.quality === 'number' ? parameters.quality : undefined,
+        });
+        result = {
+          success: raster.success,
+          outputPath: raster.outputPath,
+          duration: raster.duration,
+          error: raster.error,
+          metadata: raster.metadata
+            ? {
+                format: raster.metadata.format,
+                pages: raster.metadata.pages,
+                engine: 'pdfjs+canvas+sharp',
+              }
+            : undefined,
+        };
+      } else if (plan.outputFormat === 'txt') {
         result = await this.extractText(plan.inputPath, plan.outputPath);
       } else if (parameters.operation === 'merge') {
         result = await this.mergePdfs(parameters.inputFiles ?? [plan.inputPath], plan.outputPath);
@@ -226,6 +254,10 @@ export class PdfAdapter extends BaseAdapter {
 
     if (parameters.operation === 'merge' && (!parameters.inputFiles || parameters.inputFiles.length < 2)) {
       throw new Error('Merge operation requires at least 2 input files');
+    }
+
+    if (parameters.dpi !== undefined) {
+      resolveDpi(parameters.dpi as number);
     }
   }
 }

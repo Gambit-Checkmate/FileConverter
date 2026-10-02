@@ -31,6 +31,7 @@ export class Converter {
       operation,
       inputFiles,
       pages,
+      dpi,
       logFileJson,
       logFileTxt
       , quiet = false
@@ -118,7 +119,8 @@ export class Converter {
         stripMetadata,
         operation,
         inputFiles,
-        pages
+        pages,
+        dpi
       };
 
       // Merge with preset if specified

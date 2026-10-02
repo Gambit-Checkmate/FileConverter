@@ -11,6 +11,8 @@ export interface ConversionParameters {
   operation?: 'compress' | 'merge' | 'split';
   inputFiles?: string[];
   pages?: string;
+  /** Rasterization DPI for PDF → image (clamped 72–300). */
+  dpi?: number;
   // OCR-operasjoner
   language?: string;
   [key: string]: any;
