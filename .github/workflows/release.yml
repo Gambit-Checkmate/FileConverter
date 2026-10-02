@@ -62,10 +62,24 @@ jobs:
           # Keep the staged package outside the npm workspace. Installing from
           # packages/core/release makes npm traverse the parent workspace and
           # can fail while resolving its dependency tree.
+          #
+          # Lockfile-less `npm install --omit=dev` still walks stripped-out
+          # devDependency peers (vitest / typescript-eslint) and crashes npm
+          # 10.9 with `Cannot read properties of null (reading 'edgesOut')`.
+          # Strip devDependencies, generate a lock in the temp dir, then
+          # `npm ci` so integrity checks stay on and install scripts stay off.
           release_dir="$(mktemp -d)"
           cp -r packages/core/dist "$release_dir/"
-          cp packages/core/package.json "$release_dir/"
-          npm install --prefix "$release_dir" --omit=dev --ignore-scripts
+          node -e '
+            const fs = require("fs");
+            const out = process.argv[1];
+            const pkg = JSON.parse(fs.readFileSync("packages/core/package.json", "utf8"));
+            delete pkg.devDependencies;
+            if (pkg.scripts) delete pkg.scripts.prepack;
+            fs.writeFileSync(out, JSON.stringify(pkg, null, 2) + "\n");
+          ' "$release_dir/package.json"
+          npm install --prefix "$release_dir" --package-lock-only --omit=dev --ignore-scripts
+          npm ci --prefix "$release_dir" --omit=dev --ignore-scripts
           rm -rf "$release_dir/node_modules/.cache"
           tar -czf "packages/core/fileconverter-${{ matrix.name }}.tar.gz" -C "$release_dir" .
 
