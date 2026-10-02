@@ -2,6 +2,19 @@ import { OfficeAdapter } from '../../src/adapters/office/office-adapter';
 import { getTestFilePath } from '../setup';
 import fs from 'fs';
 import path from 'path';
+import mammoth from 'mammoth';
+
+vi.mock('mammoth', async () => {
+  const actual = await vi.importActual<typeof mammoth>('mammoth');
+  return {
+    ...actual,
+    default: {
+      ...actual.default,
+      convertToHtml: vi.fn(actual.default.convertToHtml),
+      images: actual.default.images,
+    },
+  };
+});
 
 describe('OfficeAdapter', () => {
   let adapter: OfficeAdapter;
@@ -271,6 +284,42 @@ describe('OfficeAdapter', () => {
         expect(fs.existsSync(outputPath)).toBe(true);
         const content = fs.readFileSync(outputPath, 'utf-8');
         expect(content).toContain('Test Document');
+      });
+
+      it('should sanitize HTML output to prevent XSS attacks', async () => {
+        const testDocx = await createMinimalDocx(getTestFilePath('xss-test.docx'));
+        const outputPath = getTestFilePath('sanitized-output.html');
+        
+        const dirtyHtml = '<p>Safe Content</p><script>alert("xss")</script><p onclick="alert(1)">Click</p><a href="javascript:void(0)">Link</a><iframe src="evil.com"></iframe><object data="evil.swf"></object><embed src="evil.swf">';
+        
+        const mockMammoth = await import('mammoth');
+        vi.mocked(mockMammoth.default.convertToHtml).mockResolvedValueOnce({
+          value: dirtyHtml,
+          messages: [],
+        });
+
+        const plan = {
+          inputPath: testDocx,
+          outputPath,
+          inputFormat: 'docx',
+          outputFormat: 'html',
+          supported: true,
+        };
+
+        const result = await adapter.convert(plan, {});
+
+        expect(result.success).toBe(true);
+        expect(fs.existsSync(outputPath)).toBe(true);
+        const content = fs.readFileSync(outputPath, 'utf-8');
+        
+        expect(content).not.toContain('<script');
+        expect(content).not.toContain('alert');
+        expect(content).not.toContain('onclick');
+        expect(content).not.toContain('javascript:');
+        expect(content).not.toContain('<iframe');
+        expect(content).not.toContain('<object');
+        expect(content).not.toContain('<embed');
+        expect(content).toContain('Safe Content');
       });
     });
 

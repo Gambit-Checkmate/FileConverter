@@ -13,6 +13,7 @@ import {
   renderHtmlToPdf,
   wrapInHtmlDocument,
   htmlToMarkdown,
+  sanitizeHtmlForPdf,
 } from '../document/html-renderers';
 import { renderOfficeToPdfWithLibreOffice } from './libreoffice-renderer';
 import { renderOfficeToPdfWithMicrosoftWord } from './microsoft-word-renderer';
@@ -428,7 +429,7 @@ export class OfficeAdapter extends BaseAdapter {
         break;
       case 'html':
       case 'htm':
-        fs.writeFileSync(outputPath, wrapInHtmlDocument(html), 'utf-8');
+        fs.writeFileSync(outputPath, wrapInHtmlDocument(sanitizeHtmlForPdf(html)), 'utf-8');
         break;
       case 'txt':
         fs.writeFileSync(outputPath, stripHtml(html), 'utf-8');
