@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.8.0](https://github.com/Marentius/FileConverter/compare/fileconverter-v1.7.0...fileconverter-v1.8.0) (2026-10-02)
+
+
+### Features
+
+* **core:** PDF→image rasterize with fail-closed DoS caps ([#14](https://github.com/Marentius/FileConverter/issues/14)) ([6ef053f](https://github.com/Marentius/FileConverter/commit/6ef053fddf48ac6b0ffaede187cbd061d39cdd42))
+
+
+### Bug Fixes
+
+* **core:** sanitize Office→HTML output (parity with PDF) ([#105](https://github.com/Marentius/FileConverter/issues/105)) ([a68cf3a](https://github.com/Marentius/FileConverter/commit/a68cf3ad1a7bf4abd406229bd1ca012b171086e6))
+* **release:** package core outside npm workspace ([2f9b4ed](https://github.com/Marentius/FileConverter/commit/2f9b4ed7981f48277de9e7b9e2b492ea55d6a672))
+
 ## [1.7.0](https://github.com/Marentius/FileConverter/compare/fileconverter-v1.6.1...fileconverter-v1.7.0) (2026-09-26)
 
 

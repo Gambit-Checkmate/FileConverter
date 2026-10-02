@@ -1,6 +1,6 @@
 {
   "name": "@fileconverter/core",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Universal file conversion CLI and library — images, documents, PDFs, and OCR with pure npm packages",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
