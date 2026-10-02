@@ -78,8 +78,15 @@ jobs:
             if (pkg.scripts) delete pkg.scripts.prepack;
             fs.writeFileSync(out, JSON.stringify(pkg, null, 2) + "\n");
           ' "$release_dir/package.json"
-          npm install --prefix "$release_dir" --package-lock-only --omit=dev --ignore-scripts
-          npm ci --prefix "$release_dir" --omit=dev --ignore-scripts
+          # Run lock + ci with cwd = $release_dir. `--prefix` from the monorepo
+          # root still binds arborist to the workspace, so the lock looks
+          # "up to date" while every prod dep is missing (EUSAGE / Missing
+          # from lock file on macOS CI).
+          (
+            cd "$release_dir"
+            npm install --package-lock-only --omit=dev --ignore-scripts
+            npm ci --omit=dev --ignore-scripts
+          )
           rm -rf "$release_dir/node_modules/.cache"
           tar -czf "packages/core/fileconverter-${{ matrix.name }}.tar.gz" -C "$release_dir" .
 
