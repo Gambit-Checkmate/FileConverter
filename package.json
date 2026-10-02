@@ -1,6 +1,6 @@
 {
   "name": "fileconverter",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "description": "Universal fileconverter with batch support",
   "private": true,
   "workspaces": [

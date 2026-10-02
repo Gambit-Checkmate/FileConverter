@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.2](https://github.com/Marentius/FileConverter/compare/fileconverter-v1.8.1...fileconverter-v1.8.2) (2026-10-02)
+
+
+### Bug Fixes
+
+* **ci:** run CLI tarball npm ci inside release dir ([bb13daa](https://github.com/Marentius/FileConverter/commit/bb13daa228dc314728681f65d9c32997f3bdc497))
+
 ## [1.8.1](https://github.com/Marentius/FileConverter/compare/fileconverter-v1.8.0...fileconverter-v1.8.1) (2026-10-02)
 
 
