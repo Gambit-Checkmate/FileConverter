@@ -2,10 +2,18 @@ const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
 const { fork } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+const {
+  PathAllowlist,
+  assertConvertRequest,
+  assertAllowedExistingPath,
+} = require('./path-allowlist.cjs');
 
 let mainWindow;
+/** Session-scoped dialog path allowlist (cleared when the window closes). */
+const pathAllowlist = new PathAllowlist();
 
 function createWindow() {
+  pathAllowlist.clear();
   mainWindow = new BrowserWindow({
     title: 'FileConverter',
     width: 1000,
@@ -28,6 +36,11 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
+
+  mainWindow.on('closed', () => {
+    pathAllowlist.clear();
+    mainWindow = null;
+  });
 }
 
 function fromMainWindow(event) {
@@ -78,26 +91,32 @@ app.whenReady().then(() => {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile', 'multiSelections'],
     });
-    return result.canceled ? [] : result.filePaths;
+    if (result.canceled) return [];
+    pathAllowlist.remember(result.filePaths);
+    return result.filePaths;
   });
   ipcMain.handle('folder:select', async (event) => {
     fromMainWindow(event);
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory'],
     });
-    return result.canceled ? null : result.filePaths[0];
+    if (result.canceled) return null;
+    pathAllowlist.remember(result.filePaths);
+    return result.filePaths[0];
   });
   ipcMain.handle('files:convert', async (event, inputPaths, outputDir, format) => {
     fromMainWindow(event);
-    return convertFiles(inputPaths, outputDir, format);
+    // Fail closed before fork: every path must be dialog-selected (realpath).
+    const allowed = assertConvertRequest(inputPaths, outputDir, pathAllowlist);
+    return convertFiles(allowed.inputPaths, allowed.outputDir, format);
   });
   ipcMain.handle('folder:open', async (event, folderPath) => {
     fromMainWindow(event);
-    if (typeof folderPath !== 'string' || !path.isAbsolute(folderPath) ||
-        !fs.existsSync(folderPath) || !fs.statSync(folderPath).isDirectory()) {
+    const realFolder = assertAllowedExistingPath(folderPath, pathAllowlist);
+    if (!fs.statSync(realFolder).isDirectory()) {
       throw new Error('The output folder does not exist.');
     }
-    const error = await shell.openPath(folderPath);
+    const error = await shell.openPath(realFolder);
     if (error) throw new Error(error);
   });
 
