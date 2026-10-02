@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/Marentius/FileConverter/compare/fileconverter-v1.8.0...fileconverter-v1.8.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* **ci:** lockfile-backed CLI tarball install in release ([#111](https://github.com/Marentius/FileConverter/issues/111)) ([290ad6d](https://github.com/Marentius/FileConverter/commit/290ad6daa3d1a28e6762836a9f7559e1beca37dd))
+
 ## [1.8.0](https://github.com/Marentius/FileConverter/compare/fileconverter-v1.7.0...fileconverter-v1.8.0) (2026-10-02)
 
 
