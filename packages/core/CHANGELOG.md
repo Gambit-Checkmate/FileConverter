@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/Marentius/FileConverter/compare/fileconverter-v1.8.2...fileconverter-v1.9.0) (2026-10-03)
+
+
+### Features
+
+* **gui:** add CLI feature parity to the desktop app ([#125](https://github.com/Marentius/FileConverter/issues/125)) ([e8286cc](https://github.com/Marentius/FileConverter/commit/e8286cc976d999200dd81112d1c7096b1d4b954f))
+
 ## [1.8.2](https://github.com/Marentius/FileConverter/compare/fileconverter-v1.8.1...fileconverter-v1.8.2) (2026-10-02)
 
 
