@@ -2,167 +2,132 @@ name: Release
 
 on:
   workflow_run:
-    workflows: ['CI']
+    workflows: ["CI"]
     types: [completed]
     branches: [main]
 
 permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
+  contents: read
+  actions: read
+
+# Serialize release planning/publication; never cancel an in-flight publish.
+concurrency:
+  group: releases-main
+  cancel-in-progress: false
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    permissions:
+      contents: write
+      pull-requests: write
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
+      cli_created: ${{ steps.release.outputs['packages/core--release_created'] }}
+      cli_tag: ${{ steps.release.outputs['packages/core--tag_name'] }}
+      gui_created: ${{ steps.release.outputs['packages/gui--release_created'] }}
+      gui_tag: ${{ steps.release.outputs['packages/gui--tag_name'] }}
     steps:
+      - name: Only plan releases from the current validated main commit
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')
+          if [ "$head" = "$TESTED_SHA" ]; then echo 'current=true' >> "$GITHUB_OUTPUT"; fi
       - uses: googleapis/release-please-action@v4
         id: release
+        if: steps.current.outputs.current == 'true'
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
-  package:
-    runs-on: ${{ matrix.os }}
+  publish-cli:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            name: linux-x64
-          - os: windows-latest
-            name: win-x64
-          - os: macos-latest
-            name: macos-arm64
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci --workspace=packages/core
-
-      - name: Build
-        run: npm run build --workspace=packages/core
-
-      - name: Package artifact
-        shell: bash
-        run: |
-          # Keep the staged package outside the npm workspace. Installing from
-          # packages/core/release makes npm traverse the parent workspace and
-          # can fail while resolving its dependency tree.
-          #
-          # Lockfile-less `npm install --omit=dev` still walks stripped-out
-          # devDependency peers (vitest / typescript-eslint) and crashes npm
-          # 10.9 with `Cannot read properties of null (reading 'edgesOut')`.
-          # Strip devDependencies, generate a lock in the temp dir, then
-          # `npm ci` so integrity checks stay on and install scripts stay off.
-          release_dir="$(mktemp -d)"
-          cp -r packages/core/dist "$release_dir/"
-          node -e '
-            const fs = require("fs");
-            const out = process.argv[1];
-            const pkg = JSON.parse(fs.readFileSync("packages/core/package.json", "utf8"));
-            delete pkg.devDependencies;
-            if (pkg.scripts) delete pkg.scripts.prepack;
-            fs.writeFileSync(out, JSON.stringify(pkg, null, 2) + "\n");
-          ' "$release_dir/package.json"
-          # Run lock + ci with cwd = $release_dir. `--prefix` from the monorepo
-          # root still binds arborist to the workspace, so the lock looks
-          # "up to date" while every prod dep is missing (EUSAGE / Missing
-          # from lock file on macOS CI).
-          (
-            cd "$release_dir"
-            npm install --package-lock-only --omit=dev --ignore-scripts
-            npm ci --omit=dev --ignore-scripts
-          )
-          rm -rf "$release_dir/node_modules/.cache"
-          tar -czf "packages/core/fileconverter-${{ matrix.name }}.tar.gz" -C "$release_dir" .
-
-      - name: Upload artifact to release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ needs.release-please.outputs.tag_name }} packages/core/fileconverter-${{ matrix.name }}.tar.gz
-
-  package-gui:
-    runs-on: ${{ matrix.os }}
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Test GUI
-        run: npm test --workspace=@fileconverter/gui
-
-      - name: Build desktop ZIP
-        run: npm run make --workspace=@fileconverter/gui
-
-      - name: Upload desktop ZIP to release
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
-        run: |
-          shopt -s nullglob
-          version=$(node -p "require('./package.json').version")
-          archives=(packages/gui/out/make/zip/*/*/*-"$version".zip)
-          if [ "${#archives[@]}" -ne 1 ]; then
-            echo "Expected one desktop ZIP, found ${#archives[@]}" >&2
-            exit 1
-          fi
-          gh release upload "$RELEASE_TAG" "${archives[0]}" --clobber
-
-  publish-npm:
+    if: needs.release-please.outputs.cli_created == 'true'
     runs-on: ubuntu-latest
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created }}
     permissions:
+      contents: write
+      actions: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
-
+          ref: ${{ needs.release-please.outputs.cli_tag }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'npm'
-
-      - name: Ensure npm supports trusted publishing
+          node-version: "22"
+          registry-url: https://registry.npmjs.org
+      - name: Find successful CI for the release tag's exact commit
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release-ci.mjs
+      - name: Download the tested CLI artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN: ${{ steps.ci.outputs.run }}
+        run: gh run download "$CI_RUN" --repo "$GITHUB_REPOSITORY" --pattern 'cli-*' --dir artifacts
+      - name: Verify all platforms, versions, source commit, and checksums
+        env:
+          CI_SHA: ${{ steps.ci.outputs.sha }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.cli_tag }}
+        run: node scripts/artifacts.mjs verify-release cli artifacts
+      - name: Upload tested CLI downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.cli_tag }}
+        run: |
+          node -e 'const {execFileSync}=require("node:child_process"); for(const file of require("./artifacts/cli-files.json")) execFileSync("gh", ["release", "upload", process.env.RELEASE_TAG, file, "--clobber"], {stdio:"inherit"});'
+      - name: Enable npm trusted publishing
         run: npm install -g npm@latest
+      - name: Publish the verified npm tarball with provenance
+        run: npm run publish:verified
+      - name: Publish the complete CLI release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.cli_tag }}
+        run: gh release edit "$RELEASE_TAG" --draft=false --latest=false --title "FileConverter CLI ${RELEASE_TAG#fileconverter-}"
 
-      - name: Install dependencies
-        run: npm ci --workspace=packages/core
-
-      - name: Build
-        run: npm run build --workspace=packages/core
-
-      - name: Publish to npm with provenance
-        run: npm publish --workspace=packages/core --provenance --access public
+  publish-gui:
+    needs: release-please
+    if: needs.release-please.outputs.gui_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.gui_tag }}
+      - name: Find successful CI for the release tag's exact commit
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release-ci.mjs
+      - name: Download the tested desktop ZIPs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN: ${{ steps.ci.outputs.run }}
+        run: gh run download "$CI_RUN" --repo "$GITHUB_REPOSITORY" --pattern 'gui-*' --dir artifacts
+      - name: Verify all platforms, versions, source commit, and checksums
+        env:
+          CI_SHA: ${{ steps.ci.outputs.sha }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.gui_tag }}
+        run: node scripts/artifacts.mjs verify-release gui artifacts
+      - name: Upload tested desktop ZIPs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.gui_tag }}
+        run: |
+          node -e 'const {execFileSync}=require("node:child_process"); for(const file of require("./artifacts/gui-files.json")) execFileSync("gh", ["release", "upload", process.env.RELEASE_TAG, file, "--clobber"], {stdio:"inherit"});'
+      - name: Publish the complete desktop release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.gui_tag }}
+        run: gh release edit "$RELEASE_TAG" --draft=false --latest --title "FileConverter Desktop ${RELEASE_TAG#gui-}"

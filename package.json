@@ -1,6 +1,5 @@
 {
   "name": "fileconverter",
-  "version": "1.8.2",
   "description": "Universal fileconverter with batch support",
   "private": true,
   "workspaces": [
@@ -16,7 +15,11 @@
     "gui:dev": "npm run dev --workspace @fileconverter/gui",
     "gui:build": "npm run package --workspace @fileconverter/gui",
     "core:build": "cd packages/core && npm run build",
-    "core:dev": "cd packages/core && npm run dev"
+    "core:dev": "cd packages/core && npm run dev",
+    "test:automation": "node --test test/automation.test.mjs",
+    "package:cli": "node scripts/package-cli.mjs",
+    "artifact:record": "node scripts/artifacts.mjs record",
+    "publish:verified": "node scripts/publish-npm.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -271,3 +271,7 @@ npx jest path/to/test.spec.ts
 ## License
 
 MIT
+
+## Releases
+
+The npm CLI/core and desktop app have independent versions. Desktop releases bundle an explicitly pinned core version. See [CI/CD and release policy](docs/releases.md) for versioning, platform builds, and publication.

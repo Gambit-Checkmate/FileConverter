@@ -167,7 +167,7 @@ app.whenReady().then(() => {
         ...result,
         guiVersion: app.isPackaged
           ? app.getVersion()
-          : require("../../../package.json").version,
+          : require("../package.json").version,
         platform: process.platform,
         arch: process.arch,
         node: process.versions.node,
