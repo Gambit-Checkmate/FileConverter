@@ -69,7 +69,7 @@ export class JobQueue extends EventEmitter {
       job.endTime = new Date();
       job.duration = job.endTime.getTime() - job.startTime!.getTime();
 
-      this.logJobResult(job, true, 0);
+      this.logJobResult(job, true, 0, parameters);
       this.emit('jobCompleted', job);
 
       logger.info(`Job ${job.id} completed`, {
@@ -83,7 +83,7 @@ export class JobQueue extends EventEmitter {
       job.duration = job.endTime.getTime() - job.startTime!.getTime();
       job.error = error instanceof Error ? error.message : String(error);
 
-      this.logJobResult(job, false, 1);
+      this.logJobResult(job, false, 1, parameters);
 
       // Try retry if we haven't reached max attempts
       if (job.retryCount < job.maxRetries) {
@@ -113,7 +113,7 @@ export class JobQueue extends EventEmitter {
     }
   }
 
-  private logJobResult(job: ConversionJob, success: boolean, exitCode: number): void {
+  private logJobResult(job: ConversionJob, success: boolean, exitCode: number, parameters: ConversionParameters): void {
     // Find correct engine name based on adapter
     const adapter = this.adapterManager.getAdapter(job.plan.inputFormat, job.plan.outputFormat);
     const engineName = adapter ? adapter.name : 'unknown';
@@ -124,6 +124,7 @@ export class JobQueue extends EventEmitter {
       outputPath: job.plan.outputPath,
       engine: engineName,
       parameters: {
+        ...parameters,
         inputFormat: job.plan.inputFormat,
         outputFormat: job.plan.outputFormat
       },

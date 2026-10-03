@@ -9,6 +9,8 @@ export interface ConversionPlan {
 
 export interface ConversionOptions {
   input: string;
+  projectDirectory?: string;
+  includeLocalConfig?: boolean;
   output: string;
   /** Exact destination for single-file conversions. */
   outputFile?: string;
@@ -22,6 +24,7 @@ export interface ConversionOptions {
   maxHeight?: number;
   stripMetadata?: boolean;
   preset?: string;
+  presetScope?: 'builtin' | 'global' | 'local';
   // PDF-operasjoner
   operation?: 'compress' | 'merge' | 'split';
   inputFiles?: string[];
@@ -55,6 +58,7 @@ export interface ConversionResult {
   failedJobs: number;
   totalDuration: number;
   jobs: ConversionJob[];
+  plans?: ConversionPlan[];
 }
 
 export interface JobLog {

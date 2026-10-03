@@ -20,7 +20,7 @@ const logDir = getLogDir();
 
 // Opprett logs-mappe hvis den ikke eksisterer
 import fs from 'fs';
-if (!fs.existsSync(logDir)) {
+if (process.env.FILECONVERTER_DISABLE_FILE_LOGS !== '1' && !fs.existsSync(logDir)) {
   try {
     fs.mkdirSync(logDir, { recursive: true });
   } catch (error) {
@@ -72,7 +72,7 @@ const transports: winston.transport[] = [
 ];
 
 // Legg til fil-transports kun hvis vi kan skrive til log-mappen
-if (canWriteToLogDir()) {
+if (process.env.FILECONVERTER_DISABLE_FILE_LOGS !== '1' && canWriteToLogDir()) {
   transports.push(
     new winston.transports.File({
       filename: path.join(logDir, 'converter.log'),

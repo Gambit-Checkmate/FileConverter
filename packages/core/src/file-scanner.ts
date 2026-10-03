@@ -5,6 +5,7 @@ import { ConversionPlan } from './types';
 import { validatePath, sanitizeFilename } from './path-security';
 import { sanitizeLogValue } from './log-sanitizer';
 import logger from './logger';
+import { AdapterManager } from './adapters/adapter-manager';
 
 export type ConversionSupportChecker = (inputFormat: string, outputFormat: string) => boolean;
 
@@ -29,21 +30,20 @@ export async function scanForFiles(
       // Directory - find all files
       const files: string[] = [];
       
-      if (recursive) {
-        // Recursive search - simplified implementation for now
-        logger.warn('Recursive search not fully implemented yet');
-      } else {
-        // Non-recursive search
-        const items = fs.readdirSync(inputPath);
-        for (const item of items) {
-          const fullPath = path.join(inputPath, item);
-          const stats = fs.statSync(fullPath);
-          if (stats.isFile()) {
-            files.push(fullPath);
-          }
+      const outputRoot = path.resolve(outputDir);
+      const inputRoot = path.resolve(inputPath);
+      const walk = (directory: string): void => {
+        for (const item of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+          const fullPath = path.join(directory, item.name);
+          // Skip symlinks to avoid cycles and escaping the selected tree.
+          if (item.isSymbolicLink()) continue;
+          if (item.isFile()) files.push(fullPath);
+          else if (recursive && item.isDirectory() &&
+            !(outputRoot !== inputRoot && path.resolve(fullPath) === outputRoot)) walk(fullPath);
         }
-      }
-      
+      };
+      walk(inputPath);
+
       logger.info('Found files in directory', {
         count: files.length,
         directory: sanitizeLogValue(inputPath),
@@ -85,7 +85,7 @@ async function createConversionPlan(
   // Check if conversion is supported
   const outputSupported = supportsConversion
     ? supportsConversion(inputFormat, targetFormat)
-    : isSupportedFormat(targetFormat);
+    : new AdapterManager().getAdapter(inputFormat, targetFormat) !== null;
   const supported = fileType.supported && outputSupported;
   let reason: string | undefined;
   
@@ -105,17 +105,4 @@ async function createConversionPlan(
     supported,
     reason
   };
-}
-
-function isSupportedFormat(format: string): boolean {
-  const supportedFormats = [
-    // Image formats
-    'png', 'jpg', 'jpeg', 'webp', 'tiff', 'bmp', 'gif', 'heic',
-    // Document formats
-    'docx', 'pptx', 'xlsx', 'odt', 'pdf', 'md', 'html', 'rtf', 'txt',
-    // Video/audio
-    'mp4', 'mov', 'mp3', 'wav'
-  ];
-
-  return supportedFormats.includes(format.toLowerCase());
 }

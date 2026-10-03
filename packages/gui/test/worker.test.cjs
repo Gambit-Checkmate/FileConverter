@@ -15,6 +15,7 @@ function requestConversion(inputPaths, outputDir, format) {
     let stderr = '';
     child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
     child.on('message', (message) => {
+      if (message.progress) return;
       settled = true;
       if (message.ok) resolve(message.result);
       else reject(new Error(message.error));

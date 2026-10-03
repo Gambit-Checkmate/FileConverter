@@ -212,7 +212,7 @@ describe('Converter Integration Tests', () => {
   });
 
   describe('Normal Mode', () => {
-    it('continues to execute recognized format pairs without an adapter', async () => {
+    it('reports unsupported format pairs without running an adapter', async () => {
       const inputFile = path.join(testInputDir, 'unsupported-pair.jpg');
 
       await sharp({

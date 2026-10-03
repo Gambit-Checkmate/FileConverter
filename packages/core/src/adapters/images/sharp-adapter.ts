@@ -49,11 +49,8 @@ export class SharpAdapter extends BaseAdapter {
       }
 
       // Strip metadata hvis ønsket
-      if (parameters.stripMetadata) {
-        sharpInstance = sharpInstance.withMetadata({});
-      } else {
-        sharpInstance = sharpInstance.withMetadata();
-      }
+      // Sharp strips metadata by default; withMetadata({}) would retain it.
+      if (!parameters.stripMetadata) sharpInstance = sharpInstance.withMetadata();
 
       // Konverter til riktig format med kvalitet
       const outputFormat = plan.outputFormat.toLowerCase();

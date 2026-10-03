@@ -31,7 +31,7 @@ program
   .option('--concurrency <number>', 'Number of parallel jobs (default: 1)',
     (value) => parsePositiveInt(value, 'concurrency'))
   .option('--retries <number>', 'Number of retry attempts per job (default: 2)',
-    (value) => parsePositiveInt(value, 'retries'))
+    (value) => parseIntInRange(value, 'retries', 0, Number.MAX_SAFE_INTEGER))
   .option('--quality <number>', 'Quality for image conversion (1-100)',
     (value) => parseIntInRange(value, 'quality', 1, 100))
   .option('--max-width <number>', 'Maximum width for images',
@@ -59,7 +59,7 @@ program
         quality: options.quality,
         maxWidth: options.maxWidth,
         maxHeight: options.maxHeight,
-        stripMetadata: options.stripMetadata || false,
+        stripMetadata: options.stripMetadata,
         preset: options.preset,
         logFileJson: options.logFileJson,
         logFileTxt: options.logFileTxt,

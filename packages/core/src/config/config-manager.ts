@@ -39,18 +39,22 @@ export class ConfigManager {
   private userPresetsPath: string;
   private projectPresetsPath: string;
 
-  private constructor() {
+  private constructor(projectDirectory: string = process.cwd(), private includeLocal: boolean = true) {
     // Global config (system-wide)
     this.globalConfigPath = path.join(os.homedir(), '.fileconverter', 'config.json');
     
     // Local config (current directory)
-    this.localConfigPath = path.join(process.cwd(), '.fileconverter.json');
+    this.localConfigPath = path.join(projectDirectory, '.fileconverter.json');
     
     // User presets (user-specific)
     this.userPresetsPath = path.join(os.homedir(), '.fileconverter', 'presets.json');
     
     // Project presets (project-specific)
-    this.projectPresetsPath = path.join(process.cwd(), '.fileconverter-presets.json');
+    this.projectPresetsPath = path.join(projectDirectory, '.fileconverter-presets.json');
+  }
+
+  static forProject(projectDirectory: string, includeLocal: boolean = true): ConfigManager {
+    return new ConfigManager(path.resolve(projectDirectory), includeLocal);
   }
 
   static getInstance(): ConfigManager {
@@ -80,7 +84,7 @@ export class ConfigManager {
     }
 
     // 2. Last local config (overstyrer global)
-    const localConfig = await this.loadConfigFile(this.localConfigPath);
+    const localConfig = this.includeLocal ? await this.loadConfigFile(this.localConfigPath) : null;
     if (localConfig) {
       this.mergeConfig(config, localConfig);
       logger.debug('Local config lastet', { path: this.localConfigPath });
@@ -94,7 +98,7 @@ export class ConfigManager {
     }
 
     // 4. Last project presets (overstyrer user presets)
-    const projectPresets = await this.loadPresetsFile(this.projectPresetsPath);
+    const projectPresets = this.includeLocal ? await this.loadPresetsFile(this.projectPresetsPath) : null;
     if (projectPresets) {
       config.presets = { ...config.presets, ...projectPresets };
       logger.debug('Project presets lastet', { path: this.projectPresetsPath });
@@ -203,7 +207,7 @@ export class ConfigManager {
     }
 
     // Project presets
-    const projectPresets = await this.loadPresetsFile(this.projectPresetsPath);
+    const projectPresets = this.includeLocal ? await this.loadPresetsFile(this.projectPresetsPath) : null;
     if (projectPresets) {
       Object.values(projectPresets).forEach(preset => {
         presets.push({ ...preset, scope: 'local' });
@@ -216,9 +220,12 @@ export class ConfigManager {
   /**
    * Henter en spesifikk preset
    */
-  async getPreset(name: string): Promise<Preset | undefined> {
+  async getPreset(name: string, scope?: 'builtin' | 'global' | 'local'): Promise<Preset | undefined> {
+    if (scope === 'builtin') return this.getBuiltinPresets()[name];
+    if (scope === 'global') return (await this.loadPresetsFile(this.userPresetsPath))?.[name];
+    if (scope === 'local') return (this.includeLocal ? await this.loadPresetsFile(this.projectPresetsPath) : null)?.[name];
     // Sjekk project presets først (høyest prioritet)
-    const projectPresets = await this.loadPresetsFile(this.projectPresetsPath);
+    const projectPresets = this.includeLocal ? await this.loadPresetsFile(this.projectPresetsPath) : null;
     if (projectPresets?.[name]) {
       return projectPresets[name];
     }
@@ -265,8 +272,9 @@ export class ConfigManager {
         
         // Konverter til riktig type
         if (['quality', 'maxWidth', 'maxHeight', 'concurrency', 'retries'].includes(trimmedKey)) {
-          parameters[trimmedKey] = parseInt(trimmedValue, 10);
+          parameters[trimmedKey] = Number(trimmedValue);
         } else if (['stripMetadata', 'strip'].includes(trimmedKey)) {
+          if (!['true', '1', 'yes', 'false', '0', 'no'].includes(trimmedValue.toLowerCase())) throw new Error(`Invalid boolean: ${trimmedValue}`);
           parameters[trimmedKey === 'strip' ? 'stripMetadata' : trimmedKey] = 
             ['true', '1', 'yes'].includes(trimmedValue.toLowerCase());
         } else {
@@ -351,7 +359,7 @@ export class ConfigManager {
     return {
       'image/web': {
         name: 'image/web',
-        description: 'Optimalisert for web-bruk',
+        description: 'Optimized for web use',
         type: 'image',
         parameters: {
           quality: 85,
@@ -362,7 +370,7 @@ export class ConfigManager {
       },
       'image/print': {
         name: 'image/print',
-        description: 'Høy kvalitet for utskrift',
+        description: 'High quality for printing',
         type: 'image',
         parameters: {
           quality: 95,
@@ -373,7 +381,7 @@ export class ConfigManager {
       },
       'image/thumbnail': {
         name: 'image/thumbnail',
-        description: 'Liten miniatyrversjon',
+        description: 'Small thumbnail',
         type: 'image',
         parameters: {
           quality: 80,
@@ -384,7 +392,7 @@ export class ConfigManager {
       },
       'image/social': {
         name: 'image/social',
-        description: 'Optimalisert for sosiale medier',
+        description: 'Optimized for social media',
         type: 'image',
         parameters: {
           quality: 90,
@@ -395,7 +403,7 @@ export class ConfigManager {
       },
       'image/original': {
         name: 'image/original',
-        description: 'Bevar original kvalitet',
+        description: 'Preserve original quality',
         type: 'image',
         parameters: {
           quality: 100,
@@ -404,7 +412,7 @@ export class ConfigManager {
       },
       'pdf/screen': {
         name: 'pdf/screen',
-        description: 'Optimalisert for skjermvisning',
+        description: 'Optimized for screen viewing',
         type: 'pdf',
         parameters: {
           pdfSettings: 'screen'
@@ -412,7 +420,7 @@ export class ConfigManager {
       },
       'pdf/ebook': {
         name: 'pdf/ebook',
-        description: 'Optimalisert for e-bøker',
+        description: 'Optimized for e-books',
         type: 'pdf',
         parameters: {
           pdfSettings: 'ebook'
@@ -420,7 +428,7 @@ export class ConfigManager {
       },
       'pdf/printer': {
         name: 'pdf/printer',
-        description: 'Høy kvalitet for utskrift',
+        description: 'High quality for printing',
         type: 'pdf',
         parameters: {
           pdfSettings: 'printer'
@@ -428,7 +436,7 @@ export class ConfigManager {
       },
       'pdf/prepress': {
         name: 'pdf/prepress',
-        description: 'Høy kvalitet for prepress',
+        description: 'High quality for prepress',
         type: 'pdf',
         parameters: {
           pdfSettings: 'prepress'
@@ -439,7 +447,10 @@ export class ConfigManager {
 
   private validateImageParameters(parameters: any): boolean {
     const validKeys = ['quality', 'maxWidth', 'maxHeight', 'stripMetadata'];
-    return Object.keys(parameters).every(key => validKeys.includes(key));
+    return Object.keys(parameters).every(key => validKeys.includes(key)) &&
+      (parameters.quality === undefined || (Number.isInteger(parameters.quality) && parameters.quality >= 1 && parameters.quality <= 100)) &&
+      ['maxWidth', 'maxHeight'].every(key => parameters[key] === undefined || (Number.isSafeInteger(parameters[key]) && parameters[key] > 0)) &&
+      (parameters.stripMetadata === undefined || typeof parameters.stripMetadata === 'boolean');
   }
 
   private validatePdfParameters(parameters: any): boolean {

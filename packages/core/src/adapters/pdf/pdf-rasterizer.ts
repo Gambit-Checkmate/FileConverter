@@ -1,5 +1,5 @@
 import fs from 'fs';
-import os from 'os';
+import { randomUUID } from 'crypto';
 import path from 'path';
 import { createCanvas } from '@napi-rs/canvas';
 import sharp from 'sharp';
@@ -246,8 +246,8 @@ export async function rasterizePdfToImages(options: RasterizeOptions): Promise<R
         );
 
         const tempPath = path.join(
-          os.tmpdir(),
-          `fc-pdf-raster-${process.pid}-${Date.now()}-${pageNumber}.tmp`
+          outputDir,
+          `.fc-pdf-raster-${randomUUID()}-${pageNumber}.tmp`
         );
         tempFiles.push(tempPath);
 

@@ -23,15 +23,7 @@ export class Converter {
       dryRun = false,
       concurrency = 1,
       retries = 2,
-      quality,
-      maxWidth,
-      maxHeight,
-      stripMetadata,
-      preset,
       operation,
-      inputFiles,
-      pages,
-      dpi,
       logFileJson,
       logFileTxt
       , quiet = false
@@ -51,20 +43,20 @@ export class Converter {
       const outputDirectory = outputFile ? path.dirname(outputFile) : output;
       const resolvedOutput = path.resolve(outputDirectory);
 
-      if (!fs.existsSync(resolvedOutput)) {
+      if (!dryRun && !fs.existsSync(resolvedOutput)) {
         fs.mkdirSync(resolvedOutput, { recursive: true });
         logger.info('Created output directory', { path: resolvedOutput });
       }
       
       // Scan for files and create conversion plan
-      const dryRunAdapterManager = dryRun ? new AdapterManager() : undefined;
+      const dryRunAdapterManager = new AdapterManager();
       const plans = await scanForFiles(
         input,
         resolvedOutput,
         format,
         recursive,
         dryRunAdapterManager
-          ? (inputFormat, outputFormat) => dryRunAdapterManager.getAdapter(inputFormat, outputFormat) !== null
+          ? (inputFormat, outputFormat) => dryRunAdapterManager.getAdapter(inputFormat, outputFormat) !== null && !(inputFormat === 'pdf' && outputFormat === 'pdf' && !operation)
           : undefined
       );
 
@@ -84,7 +76,8 @@ export class Converter {
           successfulJobs: 0,
           failedJobs: 0,
           totalDuration: 0,
-          jobs: []
+          jobs: [],
+          plans
         };
       }
       
@@ -103,45 +96,15 @@ export class Converter {
           successfulJobs: supportedPlans.length,
           failedJobs: unsupportedPlans.length,
           totalDuration: 0,
-          jobs: []
+          jobs: [],
+          plans
         };
       }
       
-      // Load configuration
-      const configManager = ConfigManager.getInstance();
-      const config = await configManager.loadConfig();
-      
-      // Prepare conversion parameters
-      const conversionParameters: ConversionParameters = {
-        quality,
-        maxWidth,
-        maxHeight,
-        stripMetadata,
-        operation,
-        inputFiles,
-        pages,
-        dpi
-      };
-
-      // Merge with preset if specified
-      let finalParameters = conversionParameters;
-      if (preset) {
-        const presetConfig = await configManager.getPreset(preset);
-        if (presetConfig) {
-          finalParameters = { ...presetConfig.parameters, ...conversionParameters };
-          logger.debug('Preset applied', { preset, parameters: presetConfig.parameters });
-        } else {
-          logger.warn('Preset not found', { preset });
-        }
-      }
-
-      // Merge with global defaults
-      if (config.defaults) {
-        finalParameters = { ...config.defaults, ...finalParameters };
-      }
+      const finalParameters = await this.resolveParameters(options);
 
       // Start job queue and progress tracking
-      return await this.processJobs(supportedPlans, concurrency, retries, finalParameters, {
+      return await this.processJobs(plans, concurrency, retries, finalParameters, {
         jsonPath: logFileJson,
         textPath: logFileTxt,
       }, quiet);
@@ -150,6 +113,18 @@ export class Converter {
       logger.error('Error during conversion', { error });
       throw error;
     }
+  }
+
+  /** Resolve only explicitly supplied values over project defaults and presets. */
+  async resolveParameters(options: ConversionOptions): Promise<ConversionParameters> {
+    const configManager = options.projectDirectory
+      ? ConfigManager.forProject(options.projectDirectory, options.includeLocalConfig !== false) : ConfigManager.getInstance();
+    const config = await configManager.loadConfig();
+    const keys = ['quality', 'maxWidth', 'maxHeight', 'stripMetadata', 'operation', 'inputFiles', 'pages', 'language', 'dpi'] as const;
+    const explicit = Object.fromEntries(keys.filter(key => options[key] !== undefined).map(key => [key, options[key]]));
+    const preset = options.preset ? await configManager.getPreset(options.preset, options.presetScope) : undefined;
+    if (options.preset && !preset) throw new Error(`Preset not found: ${options.preset}`);
+    return { ...config.defaults, ...preset?.parameters, ...explicit };
   }
 
   private async processJobs(
@@ -181,13 +156,25 @@ export class Converter {
     
     // Legg til alle jobber i køen
     for (const plan of plans) {
-      await jobQueue.addJob(plan, retries, parameters);
+      if (plan.supported) await jobQueue.addJob(plan, retries, parameters);
     }
     
     // Vent på at alle jobber er ferdig
     const result = await jobQueue.waitForCompletion();
     
-    const jobLogs = jobQueue.getJobLogs();
+    const rejected = plans.filter(plan => !plan.supported).map((plan, index) => ({
+      id: `unsupported_${index}`, plan, status: 'failed' as const,
+      error: plan.reason || 'Unsupported conversion', retryCount: 0, maxRetries: retries, duration: 0
+    }));
+    result.jobs.push(...rejected);
+    result.totalJobs += rejected.length;
+    result.failedJobs += rejected.length;
+    const timestamp = new Date().toISOString();
+    const jobLogs = [...jobQueue.getJobLogs(), ...rejected.map(job => ({
+      jobId: job.id, inputPath: job.plan.inputPath, outputPath: job.plan.outputPath,
+      engine: 'none', parameters, startTime: timestamp, endTime: timestamp,
+      duration: 0, exitCode: 1, success: false, error: job.error
+    }))];
 
     // Stopp progress tracking og vis sammendrag
     if (!quiet) {
