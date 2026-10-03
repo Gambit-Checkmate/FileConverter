@@ -18,10 +18,12 @@ function createWindow() {
   saveDestinations.clear();
   mainWindow = new BrowserWindow({
     title: "FileConverter",
-    width: 1000,
-    height: 760,
+    icon: path.join(__dirname, "../icons/icon.png"),
+    width: 1180,
+    height: 820,
     minWidth: 700,
     minHeight: 550,
+    backgroundColor: "#17181b",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,

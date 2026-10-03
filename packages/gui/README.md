@@ -53,3 +53,20 @@ This builds core and the renderer, then creates a platform-specific app under `p
 The desktop app uses the version from the root `package.json`. After a release-please release, GitHub Actions builds and attaches Linux x64, Windows x64, and macOS arm64 ZIP files to that GitHub release. The desktop app is not published to npm. Pull requests also build the ZIP on all three platforms so packaging failures are caught before release.
 
 The app uses Electron's native file and directory dialogs. The renderer has no Node.js access. Conversion runs in a separate bundled Node.js process through a small preload API. This keeps image processing isolated from the UI and avoids a known Sharp/Electron conflict on Linux.
+
+## Desktop design
+
+![FileConverter desktop workspace](docs/workspace.png)
+
+The desktop workspace uses a graphite palette, warm peach accent, bundled Geist fonts, and a matching app icon. Conversion and PDF tools live in the workspace sidebar. Presets open in a searchable library, formats in a searchable reference dialog, and app/version diagnostics in an About dialog from the app menu.
+
+The renderer uses [shadcn/ui](https://ui.shadcn.com/) with Radix primitives and a lightly styled [React Bits SpotlightCard](https://reactbits.dev/components/spotlight-card). Components are owned in `src/components`, with Tailwind v4 and shared design tokens in `src/App.css`. Motion respects the operating system's reduced-motion preference. Fonts and UI assets are bundled; the interface needs no remote font service.
+
+Run component commands from this package (or pass `--cwd packages/gui` from the root):
+
+```bash
+npx shadcn@latest add dialog --cwd packages/gui
+npm run icons --workspace @fileconverter/gui
+```
+
+`components.json` at the repository root exposes the registries to the shadcn MCP; `packages/gui/components.json` configures the renderer's aliases and component destinations. The icon source is `icons/brand.svg`; the icon script generates PNG, Windows ICO, and macOS ICNS assets from it.

@@ -1,8 +1,72 @@
 import { useEffect, useState } from "react";
+import {
+  ArrowRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpRight,
+  ArrowLeftRight,
+  Files,
+  FileText,
+  FileImage,
+  FolderOpen,
+  Plus,
+  X,
+  Check,
+  CircleAlert,
+  LoaderCircle,
+  Eye,
+  SlidersHorizontal,
+  Library,
+  Layers,
+  Scissors,
+  Minimize2,
+  ChevronDown,
+  Info,
+  ListFilter,
+  Download,
+  Search,
+  ShieldCheck,
+  MoreHorizontal,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import SpotlightCard from "@/components/SpotlightCard";
+import {
+  BrandMark,
+  presetTitle,
+  basename,
+  PresetLibrary,
+  FormatReference,
+  AboutDialog,
+} from "@/components/library-panels";
 import "./App.css";
 
 const api = window.fileConverter;
 function App() {
+  const [panel, setPanel] = useState<"presets" | "formats" | "about" | null>(
+    null,
+  );
+  const [view, setView] = useState("files");
+  const [advanced, setAdvanced] = useState(false);
+  const [fileSearch, setFileSearch] = useState("");
   const [files, setFiles] = useState<string[]>([]);
   const [folder, setFolder] = useState("");
   const [outputDir, setOutputDir] = useState("");
@@ -23,13 +87,6 @@ function App() {
   >([]);
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [presets, setPresets] = useState<Preset[]>([]);
-  const [presetName, setPresetName] = useState("");
-  const [presetDescription, setPresetDescription] = useState("");
-  const [presetType, setPresetType] = useState("image");
-  const [presetParameters, setPresetParameters] = useState(
-    "quality=85;maxWidth=1920;stripMetadata=true",
-  );
-  const [presetScope, setPresetScope] = useState("global");
 
   async function attempt(work: () => Promise<void>) {
     setError("");
@@ -54,6 +111,7 @@ function App() {
     setPlans(null);
     setResult(null);
     setProgress(null);
+    setView("files");
   }, [files, folder, outputDir, format, mode, options]);
 
   useEffect(() => {
@@ -96,7 +154,7 @@ function App() {
     return (
       <label>
         {label}
-        <input
+        <Input
           type="number"
           min={min}
           max={max}
@@ -145,6 +203,7 @@ function App() {
 
   async function run(preview: boolean) {
     setBusy(true);
+    setView(preview ? "preview" : "results");
     setProgress(null);
     setPlans(null);
     setResult(null);
@@ -171,7 +230,9 @@ function App() {
     setBusy(false);
   }
   function changeMode(value: string) {
+    setFileSearch("");
     setMode(value);
+    setView("files");
     setFolder("");
     setFiles([]);
     setOptions((current) => ({
@@ -189,607 +250,1018 @@ function App() {
     });
   }
 
+  async function chooseFiles() {
+    await attempt(async () => {
+      const chosen = await api.selectFiles();
+      if (chosen.length) {
+        setFileSearch("");
+        setFolder("");
+        setFiles((current) => [...new Set([...current, ...chosen])]);
+        update("outputFile", undefined);
+        setView("files");
+      }
+    });
+  }
+  async function chooseFolder(input = false) {
+    await attempt(async () => {
+      const chosen = await api.selectOutputFolder();
+      if (chosen) {
+        if (input) {
+          setFolder(chosen);
+          setFiles([]);
+          setView("files");
+        } else setOutputDir(chosen);
+        update("outputFile", undefined);
+      }
+    });
+  }
+  const task =
+    mode === "convert"
+      ? "Convert files"
+      : mode === "merge"
+        ? "Merge PDFs"
+        : mode === "split"
+          ? "Extract pages"
+          : "Optimize PDF";
+  const imageOutput =
+    mode === "convert" &&
+    ["png", "jpg", "jpeg", "webp", "avif", "tiff", "gif"].includes(format);
+  const hasPdf = inputs.some((input) => input.inputFormat === "pdf");
+  const visibleFiles = files
+    .map((file, index) => ({ file, index }))
+    .filter(({ file }) =>
+      file.toLowerCase().includes(fileSearch.toLowerCase()),
+    );
+  const inputFormats = new Map(
+    inputs.map((input) => [input.inputPath, input.inputFormat]),
+  );
+  const fileCount = folder ? inputs.length : files.length;
+  const modeValid =
+    mode === "convert" ||
+    (mode === "merge" ? files.length >= 2 : files.length === 1);
+  function iconButton(
+    label: string,
+    onClick: () => void,
+    icon: React.ReactNode,
+    disabled = false,
+  ) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            aria-label={label}
+            onClick={onClick}
+            disabled={disabled}
+          >
+            {icon}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
+    );
+  }
   return (
-    <div className="app">
-      <header className="header">
-        <h1>FileConverter</h1>
-        <p>Convert files, extract text, and work with PDFs.</p>
-      </header>
-      <main className="main">
-        <fieldset disabled={busy} className="controls">
-          <section className="section">
-            <h2>Conversion</h2>
-            <label>
-              Task
-              <select value={mode} onChange={(e) => changeMode(e.target.value)}>
-                <option value="convert">Convert files</option>
-                <option value="merge">Merge PDFs</option>
-                <option value="split">Extract PDF pages</option>
-                <option value="compress">Optimize PDF</option>
-              </select>
-            </label>
-            {mode === "compress" && (
-              <p className="hint">
-                Rewrites the PDF structure. Embedded images are not
-                recompressed, and some PDFs may not become smaller.
-              </p>
-            )}
-            {mode === "split" && (
-              <label>
-                Pages to extract
-                <input
-                  placeholder="1-3,5,7-9"
-                  value={options.pages ?? ""}
-                  onChange={(e) => update("pages", e.target.value)}
-                />
-              </label>
-            )}
-            <div className="actions">
-              <button
-                onClick={() =>
-                  void attempt(async () => {
-                    const chosen = await api.selectFiles();
-                    if (chosen.length) {
-                      setFolder("");
-                      setFiles((current) => [
-                        ...new Set([...current, ...chosen]),
-                      ]);
-                      update("outputFile", undefined);
-                    }
-                  })
-                }
-              >
-                Select {mode === "convert" ? "files" : "PDF files"}
-              </button>
-              {mode === "convert" && (
-                <button
-                  onClick={() =>
-                    void attempt(async () => {
-                      const chosen = await api.selectOutputFolder();
-                      if (chosen) {
-                        setFolder(chosen);
-                        setFiles([]);
-                        update("outputFile", undefined);
-                      }
-                    })
-                  }
-                >
-                  Select input folder
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  setFiles([]);
-                  setFolder("");
-                  update("outputFile", undefined);
-                }}
-              >
-                Clear selection
-              </button>
+    <TooltipProvider>
+      <div className="app">
+        <aside className="sidebar" aria-label="Workspace navigation">
+          <div className="brand">
+            <BrandMark />
+            <div>
+              <strong>FileConverter</strong>
+              <span>DESKTOP WORKSPACE</span>
             </div>
-            {folder && (
-              <>
-                <p className="path">{folder}</p>
-                <label className="check">
-                  <input
-                    type="checkbox"
-                    checked={!!options.recursive}
-                    onChange={(e) => update("recursive", e.target.checked)}
-                  />
-                  Include subfolders
-                </label>
-              </>
+          </div>
+          <div className="nav-label">WORKSPACE</div>
+          <nav>
+            <Button
+              variant="ghost"
+              className={`nav-item ${mode === "convert" ? "active" : ""}`}
+              disabled={busy}
+              onClick={() => changeMode("convert")}
+              aria-label="Convert files"
+              title="Convert files"
+              aria-current={mode === "convert" ? "page" : undefined}
+            >
+              <ArrowLeftRight />
+              <span className="nav-text">Convert files</span>
+            </Button>
+            <div className="nav-label pdf-label">PDF TOOLS</div>
+            {(
+              [
+                ["merge", "Merge PDFs", Layers],
+                ["split", "Extract pages", Scissors],
+                ["compress", "Optimize PDF", Minimize2],
+              ] as const
+            ).map(([value, label, Icon]) => (
+              <Button
+                key={value}
+                variant="ghost"
+                disabled={busy}
+                className={`nav-item ${mode === value ? "active" : ""}`}
+                onClick={() => changeMode(value)}
+                aria-label={label}
+                title={label}
+                aria-current={mode === value ? "page" : undefined}
+              >
+                <Icon />
+                <span className="nav-text">{label}</span>
+              </Button>
+            ))}
+          </nav>
+          <div className="sidebar-bottom">
+            <div className="local-note">
+              <ShieldCheck />
+              <div>
+                <strong>Files stay on your device</strong>
+                <span>Conversions run locally.</span>
+              </div>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="app-menu"
+                  aria-label="FileConverter menu"
+                >
+                  <BrandMark small />
+                  <span>
+                    FileConverter <small>v{info?.guiVersion || "…"}</small>
+                  </span>
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="start" className="w-56">
+                <DropdownMenuLabel>Workspace resources</DropdownMenuLabel>
+                <DropdownMenuItem
+                  disabled={busy}
+                  onSelect={() => setPanel("presets")}
+                >
+                  <Library />
+                  Preset library
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setPanel("formats")}>
+                  <ListFilter />
+                  Format reference
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setPanel("about")}>
+                  <Info />
+                  About FileConverter
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </aside>
+        <main className="workspace">
+          <header className="workspace-header">
+            <div className="breadcrumb">
+              Workspace <span>/</span> <strong>{task}</strong>
+            </div>
+            <Badge variant="outline" className="local-badge">
+              <span />
+              Local processing
+            </Badge>
+          </header>
+          <div className="workspace-body">
+            <div className="page-heading">
+              <div>
+                <div className="eyebrow">YOUR FILES. A NEW FORMAT.</div>
+                <h1>{task}</h1>
+                <p>
+                  {mode === "convert"
+                    ? "Images, documents, and more. Ready for whatever comes next."
+                    : mode === "merge"
+                      ? "Bring your documents together, in the order you choose."
+                      : mode === "split"
+                        ? "Keep the pages you need. Leave the rest behind."
+                        : "Clean up the structure of your PDF document."}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPanel("formats")}
+              >
+                <ListFilter />
+                Formats
+              </Button>
+            </div>
+            {error && (
+              <div className="message error" role="alert">
+                <CircleAlert />
+                <span>{error}</span>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Dismiss error"
+                  onClick={() => setError("")}
+                >
+                  <X />
+                </Button>
+              </div>
             )}
-            {files.length > 0 && (
-              <div className="file-list">
-                <p>{files.length} file(s) selected</p>
-                {files.map((file, index) => (
-                  <div className="file-item" key={file}>
-                    {file}
-                    {mode === "merge" && (
-                      <div className="actions">
-                        <button
-                          disabled={index === 0}
-                          onClick={() => moveFile(index, -1)}
-                          aria-label={`Move ${file} up`}
-                        >
-                          Move up
-                        </button>
-                        <button
-                          disabled={index === files.length - 1}
-                          onClick={() => moveFile(index, 1)}
-                          aria-label={`Move ${file} down`}
-                        >
-                          Move down
-                        </button>
+            {notice && (
+              <div className="message success" role="status">
+                <Check />
+                <span>{notice}</span>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Dismiss notification"
+                  onClick={() => setNotice("")}
+                >
+                  <X />
+                </Button>
+              </div>
+            )}
+            <div className="workbench">
+              <section
+                className="source-panel"
+                aria-label="Source files and conversion activity"
+              >
+                <div className="panel-top">
+                  <div className="panel-title">
+                    <Files />
+                    <h2>Source files</h2>
+                    <Badge variant="secondary">{fileCount}</Badge>
+                  </div>
+                  <div className="source-actions">
+                    {fileCount > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => {
+                          setFiles([]);
+                          setFolder("");
+                          update("outputFile", undefined);
+                          setView("files");
+                        }}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => void chooseFiles()}
+                    >
+                      <Plus />
+                      Add files
+                    </Button>
+                  </div>
+                </div>
+                <Tabs
+                  value={view}
+                  onValueChange={setView}
+                  className="source-tabs"
+                >
+                  <div className="activity-tabs">
+                    <TabsList aria-label="Conversion activity">
+                      <TabsTrigger value="files">Files</TabsTrigger>
+                      <TabsTrigger value="preview" disabled={!plans && !busy}>
+                        Preview
+                      </TabsTrigger>
+                      <TabsTrigger value="results" disabled={!result && !busy}>
+                        Results
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+                  {busy && (
+                    <div className="progress-area" role="status">
+                      <div>
+                        <LoaderCircle className="spin" />
+                        <strong>
+                          {progress?.message || "Preparing your files…"}
+                        </strong>
+                        <span>
+                          {progress
+                            ? `${progress.completed} / ${progress.total}`
+                            : ""}
+                        </span>
                       </div>
+                      <Progress
+                        value={
+                          progress
+                            ? (progress.completed / (progress.total || 1)) * 100
+                            : 0
+                        }
+                      />
+                    </div>
+                  )}
+                  <div className="source-content">
+                    <TabsContent value="files">
+                      {!inputPaths.length ? (
+                        <SpotlightCard
+                          className="file-empty"
+                          spotlightColor="rgba(240, 150, 100, 0.10)"
+                        >
+                          <div className="file-illustration" aria-hidden="true">
+                            <div className="illustration-back">
+                              <FileImage />
+                            </div>
+                            <div className="illustration-front">
+                              <FileText />
+                              <div />
+                              <div />
+                            </div>
+                            <span>
+                              <ArrowLeftRight />
+                            </span>
+                          </div>
+                          <h3>A fresh start for your files</h3>
+                          <p>
+                            {mode === "convert"
+                              ? "Choose files or an entire folder to get started."
+                              : "Choose your PDF documents to get started."}
+                          </p>
+                          <div className="empty-actions">
+                            <Button
+                              disabled={busy}
+                              onClick={() => void chooseFiles()}
+                            >
+                              <Plus />
+                              Choose {mode === "convert" ? "files" : "PDFs"}
+                            </Button>
+                            {mode === "convert" && (
+                              <Button
+                                variant="outline"
+                                disabled={busy}
+                                onClick={() => void chooseFolder(true)}
+                              >
+                                <FolderOpen />
+                                Choose folder
+                              </Button>
+                            )}
+                          </div>
+                          <span className="empty-caption">
+                            {mode === "convert"
+                              ? "Images · Documents · PDF · OCR"
+                              : mode === "merge"
+                                ? "Two or more PDFs · Reorder before merging"
+                                : "One PDF at a time"}
+                          </span>
+                        </SpotlightCard>
+                      ) : (
+                        <>
+                          {folder ? (
+                            <div className="folder-card">
+                              <FolderOpen />
+                              <div>
+                                <strong>{basename(folder)}</strong>
+                                <p title={folder}>{folder}</p>
+                                <span>{inputs.length} files found</span>
+                              </div>
+                              <label className="check">
+                                <input
+                                  type="checkbox"
+                                  disabled={busy}
+                                  checked={!!options.recursive}
+                                  onChange={(e) =>
+                                    update("recursive", e.target.checked)
+                                  }
+                                />
+                                Include subfolders
+                              </label>
+                            </div>
+                          ) : (
+                            <>
+                              {files.length > 4 && (
+                                <div className="search-field">
+                                  <Search />
+                                  <Input
+                                    aria-label="Search selected files"
+                                    placeholder="Find a file…"
+                                    value={fileSearch}
+                                    onChange={(e) =>
+                                      setFileSearch(e.target.value)
+                                    }
+                                  />
+                                </div>
+                              )}
+                              <div className="file-table-heading">
+                                <span>NAME</span>
+                                <span>FORMAT</span>
+                              </div>
+                              {visibleFiles.map(({ file, index }) => (
+                                <div className="file-row" key={file}>
+                                  <div className="file-symbol">
+                                    {[
+                                      "png",
+                                      "jpg",
+                                      "jpeg",
+                                      "webp",
+                                      "tiff",
+                                      "gif",
+                                      "avif",
+                                    ].includes(inputFormats.get(file) || "") ? (
+                                      <FileImage />
+                                    ) : (
+                                      <FileText />
+                                    )}
+                                  </div>
+                                  <div className="file-name">
+                                    <strong title={file}>
+                                      {basename(file)}
+                                    </strong>
+                                    <span title={file}>{file}</span>
+                                  </div>
+                                  <Badge variant="outline">
+                                    {inputFormats.get(file)?.toUpperCase() ||
+                                      "…"}
+                                  </Badge>
+                                  <div className="row-actions">
+                                    {mode === "merge" && (
+                                      <>
+                                        {iconButton(
+                                          `Move ${basename(file)} up`,
+                                          () => moveFile(index, -1),
+                                          <ArrowUp />,
+                                          busy || index === 0,
+                                        )}
+                                        {iconButton(
+                                          `Move ${basename(file)} down`,
+                                          () => moveFile(index, 1),
+                                          <ArrowDown />,
+                                          busy || index === files.length - 1,
+                                        )}
+                                      </>
+                                    )}
+                                    {iconButton(
+                                      `Remove ${basename(file)}`,
+                                      () =>
+                                        setFiles((current) =>
+                                          current.filter((p) => p !== file),
+                                        ),
+                                      <X />,
+                                      busy,
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                              {!visibleFiles.length && (
+                                <p className="muted-placeholder">
+                                  No files match your search.
+                                </p>
+                              )}
+                            </>
+                          )}
+                          <div className="selection-note">
+                            <ShieldCheck />
+                            <span>
+                              Original files are preserved. Existing outputs are
+                              never overwritten.
+                            </span>
+                          </div>
+                          {mode !== "convert" && (
+                            <p className="inline-hint">
+                              {mode === "merge"
+                                ? "The order above determines the page order. Select at least two PDFs."
+                                : "Select exactly one PDF."}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </TabsContent>
+                    <TabsContent value="preview">
+                      {!busy &&
+                        (plans ? (
+                          <>
+                            <div className="activity-summary">
+                              <Eye />
+                              <div>
+                                <h3>Ready before you run</h3>
+                                <p>
+                                  {plans.filter((p) => p.supported).length} of{" "}
+                                  {plans.length} files ready to convert. No
+                                  files have been written.
+                                </p>
+                              </div>
+                            </div>
+                            {plans.map((plan, index) => (
+                              <div className="activity-row" key={index}>
+                                <span
+                                  className={`status-icon ${plan.supported ? "good" : "bad"}`}
+                                >
+                                  {plan.supported ? <Check /> : <CircleAlert />}
+                                </span>
+                                <div>
+                                  <strong title={plan.inputPath}>
+                                    {basename(plan.inputPath)}
+                                  </strong>
+                                  <Badge variant="outline">
+                                    {plan.supported ? "Ready" : "Unavailable"}
+                                  </Badge>
+                                  {(plan.outputPaths || [plan.outputPath]).map(
+                                    (output) => (
+                                      <p
+                                        className="output-path"
+                                        key={output}
+                                        title={output}
+                                      >
+                                        <ArrowRight />
+                                        {output}
+                                      </p>
+                                    ),
+                                  )}
+                                  {plan.reason && (
+                                    <p className="error-text">{plan.reason}</p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </>
+                        ) : (
+                          <p className="muted-placeholder">
+                            Choose files and an output folder, then preview your
+                            conversion.
+                          </p>
+                        ))}
+                    </TabsContent>
+                    <TabsContent value="results">
+                      {!busy &&
+                        (result ? (
+                          <>
+                            <div className="activity-summary">
+                              <span
+                                className={`status-icon ${result.success ? "good" : "bad"}`}
+                              >
+                                {result.success ? <Check /> : <CircleAlert />}
+                              </span>
+                              <div>
+                                <h3>
+                                  {result.success
+                                    ? "Your files are ready"
+                                    : "Conversion finished with errors"}
+                                </h3>
+                                <p>
+                                  {result.message} ·{" "}
+                                  {(result.totalDuration / 1000).toFixed(1)}s
+                                </p>
+                              </div>
+                            </div>
+                            {result.jobs.map((job, index) => (
+                              <div className="activity-row" key={index}>
+                                <span
+                                  className={`status-icon ${job.status === "completed" ? "good" : "bad"}`}
+                                >
+                                  {job.status === "completed" ? (
+                                    <Check />
+                                  ) : (
+                                    <CircleAlert />
+                                  )}
+                                </span>
+                                <div>
+                                  <strong title={job.input_path}>
+                                    {basename(job.input_path)}
+                                  </strong>
+                                  {job.error ? (
+                                    <p className="error-text">{job.error}</p>
+                                  ) : (
+                                    (job.output_paths || [job.output_path]).map(
+                                      (output) => (
+                                        <p
+                                          className="output-path"
+                                          key={output}
+                                          title={output}
+                                        >
+                                          <ArrowRight />
+                                          {output}
+                                        </p>
+                                      ),
+                                    )
+                                  )}
+                                  <small>
+                                    {job.duration ?? 0}ms ·{" "}
+                                    {job.retryCount ?? 0} retries
+                                  </small>
+                                </div>
+                              </div>
+                            ))}
+                            <div className="report-actions">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  void attempt(async () => {
+                                    await api.openOutputFolder(destination);
+                                  })
+                                }
+                              >
+                                <FolderOpen />
+                                Open folder
+                                <ArrowUpRight />
+                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <Download />
+                                    Export report
+                                    <ChevronDown />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                  {(
+                                    [
+                                      "result-json",
+                                      "log-json",
+                                      "log-text",
+                                    ] as const
+                                  ).map((kind, index) => (
+                                    <DropdownMenuItem
+                                      key={kind}
+                                      onSelect={() =>
+                                        void attempt(async () => {
+                                          const saved = await api.exportReport(
+                                            kind,
+                                            result,
+                                          );
+                                          if (saved)
+                                            setNotice(
+                                              `Report saved to ${saved}`,
+                                            );
+                                        })
+                                      }
+                                    >
+                                      {
+                                        ["Result JSON", "Log JSON", "Text log"][
+                                          index
+                                        ]
+                                      }
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </>
+                        ) : (
+                          <p className="muted-placeholder">
+                            Your converted files will appear here.
+                          </p>
+                        ))}
+                    </TabsContent>
+                  </div>
+                </Tabs>
+                <div className="source-footer">
+                  <span>
+                    {fileCount
+                      ? `${fileCount} file${fileCount === 1 ? "" : "s"} selected`
+                      : "No files selected"}
+                  </span>
+                  <span>
+                    <ShieldCheck />
+                    On-device conversion
+                  </span>
+                </div>
+              </section>
+              <fieldset disabled={busy} className="output-panel">
+                <div className="panel-title">
+                  <SlidersHorizontal />
+                  <h2>Output settings</h2>
+                </div>
+                <div className="output-settings">
+                  <div className="setting-group">
+                    <div className="group-label">DESTINATION</div>
+                    {mode === "convert" && (
+                      <label>
+                        Output format
+                        <NativeSelect
+                          value={format}
+                          onChange={(e) => {
+                            setFormat(e.target.value);
+                            update("outputFile", undefined);
+                          }}
+                        >
+                          {formats.map((value) => (
+                            <option
+                              value={value}
+                              key={value}
+                              disabled={
+                                inputs.length > 0 && supportCount(value) === 0
+                              }
+                            >
+                              {value.toUpperCase()}
+                              {inputs.length > 0
+                                ? ` · ${supportCount(value)}/${inputs.length} supported`
+                                : ""}
+                            </option>
+                          ))}
+                        </NativeSelect>
+                      </label>
+                    )}
+                    <label>
+                      Save to
+                      <Button
+                        variant="outline"
+                        className="destination-button"
+                        onClick={() => void chooseFolder()}
+                      >
+                        <FolderOpen />
+                        <span>
+                          {options.outputFile
+                            ? basename(options.outputFile)
+                            : outputDir
+                              ? basename(outputDir)
+                              : "Choose output folder"}
+                        </span>
+                        <ChevronDown />
+                      </Button>
+                    </label>
+                    {destination && (
+                      <p
+                        className="destination-path"
+                        title={options.outputFile || outputDir}
+                      >
+                        {options.outputFile || outputDir}
+                      </p>
+                    )}
+                    {(mode !== "convert" ||
+                      (!folder &&
+                        files.length === 1 &&
+                        effectiveFormat === "txt")) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-action"
+                        onClick={() =>
+                          void attempt(async () => {
+                            const chosen =
+                              await api.saveOutputFile(effectiveFormat);
+                            if (chosen) update("outputFile", chosen);
+                          })
+                        }
+                      >
+                        Choose output filename
+                        <ArrowUpRight />
+                      </Button>
+                    )}
+                    {mode === "split" && (
+                      <label>
+                        Pages to extract
+                        <Input
+                          placeholder="1-3,5,7-9"
+                          value={options.pages ?? ""}
+                          onChange={(e) => update("pages", e.target.value)}
+                        />
+                        <span className="field-hint">
+                          Use page numbers or ranges, separated by commas.
+                        </span>
+                      </label>
+                    )}
+                    {mode === "compress" && (
+                      <p className="field-hint">
+                        Rewrites PDF structure. Images are not recompressed; the
+                        file may not become smaller.
+                      </p>
                     )}
                   </div>
-                ))}
-              </div>
-            )}
-            {mode !== "convert" && (
-              <p className="hint">
-                {mode === "merge"
-                  ? "Select at least two PDFs. Their order determines the page order."
-                  : "Select exactly one PDF."}
-              </p>
-            )}
-          </section>
-          <section className="section">
-            <h2>Output</h2>
-            <div className="actions">
-              <button
-                onClick={() =>
-                  void attempt(async () => {
-                    const chosen = await api.selectOutputFolder();
-                    if (chosen) {
-                      setOutputDir(chosen);
-                      update("outputFile", undefined);
-                    }
-                  })
-                }
-              >
-                Select output folder
-              </button>
-              {(mode !== "convert" ||
-                (!folder &&
-                  files.length === 1 &&
-                  effectiveFormat === "txt")) && (
-                <button
-                  onClick={() =>
-                    void attempt(async () => {
-                      const chosen = await api.saveOutputFile(effectiveFormat);
-                      if (chosen) update("outputFile", chosen);
-                    })
-                  }
-                >
-                  Choose output filename
-                </button>
-              )}
-            </div>
-            <p className="path">
-              {options.outputFile || outputDir || "No output selected"}
-            </p>
-            {destination && (
-              <button
-                onClick={() =>
-                  void attempt(async () => {
-                    await api.openOutputFolder(destination);
-                  })
-                }
-              >
-                Open output folder
-              </button>
-            )}
-            {mode === "convert" && (
-              <label>
-                Output format
-                <select
-                  value={format}
-                  onChange={(e) => {
-                    setFormat(e.target.value);
-                    update("outputFile", undefined);
-                  }}
-                >
-                  {formats.map((value) => (
-                    <option
-                      value={value}
-                      key={value}
-                      disabled={inputs.length > 0 && supportCount(value) === 0}
-                    >
-                      {value.toUpperCase()}
-                      {inputs.length > 0
-                        ? ` (${supportCount(value)}/${inputs.length} files)`
-                        : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <p className="hint">
-              Preview checks support for each input file. Existing files and
-              conflicting output names are never overwritten.
-            </p>
-          </section>
-          <section className="section">
-            <h2>Settings</h2>
-            <label>
-              Preset
-              <select
-                value={
-                  options.preset
-                    ? `${options.presetScope}:${options.preset}`
-                    : ""
-                }
-                onChange={(e) => {
-                  const [scope, name] = e.target.value.split(":");
-                  setOptions((current) => ({
-                    ...current,
-                    preset: name || undefined,
-                    presetScope: scope as ConversionOptions["presetScope"],
-                  }));
-                }}
-              >
-                <option value="">No preset</option>
-                {presets.map((p) => (
-                  <option
-                    key={`${p.scope}:${p.name}`}
-                    value={`${p.scope}:${p.name}`}
-                  >
-                    {p.name} ({p.scope})
-                  </option>
-                ))}
-              </select>
-            </label>
-            {selectedPreset && (
-              <p className="hint">
-                {selectedPreset.description} —{" "}
-                {JSON.stringify(selectedPreset.parameters)}
-              </p>
-            )}
-            <p className="hint">
-              Empty settings use preset values or defaults. Image settings apply
-              to image conversion.
-            </p>
-            <div className="settings-grid">
-              {numberSetting("quality", "Image quality", 1, 100)}
-              {numberSetting("maxWidth", "Maximum width (px)", 1)}
-              {numberSetting("maxHeight", "Maximum height (px)", 1)}
-              <label>
-                Image metadata
-                <select
-                  value={
-                    options.stripMetadata === undefined
-                      ? ""
-                      : String(options.stripMetadata)
-                  }
-                  onChange={(e) =>
-                    update(
-                      "stripMetadata",
-                      e.target.value === ""
-                        ? undefined
-                        : e.target.value === "true",
-                    )
-                  }
-                >
-                  <option value="">Preset / default</option>
-                  <option value="true">Remove metadata</option>
-                  <option value="false">Keep metadata</option>
-                </select>
-              </label>
-              {numberSetting("concurrency", "Parallel jobs", 1)}
-              {numberSetting("retries", "Retry attempts", 0)}
-            </div>
-            {mode === "convert" &&
-              inputs.some((input) => input.inputFormat === "pdf") &&
-              ["png", "jpg", "jpeg", "webp"].includes(format) && (
-                <>
-                  {numberSetting("dpi", "PDF resolution (DPI)", 72, 300)}
-                  <label>
-                    PDF pages
-                    <input
-                      placeholder="All pages, or 1-3,5"
-                      value={options.pages ?? ""}
-                      onChange={(e) =>
-                        update("pages", e.target.value || undefined)
+                  <div className="setting-group">
+                    <div className="group-label">
+                      PRESET
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label="Open preset library"
+                        onClick={() => setPanel("presets")}
+                      >
+                        <Library />
+                      </Button>
+                    </div>
+                    <label className="sr-only" htmlFor="preset-choice">
+                      Preset
+                    </label>
+                    <NativeSelect
+                      id="preset-choice"
+                      value={
+                        options.preset
+                          ? `${options.presetScope}:${options.preset}`
+                          : ""
                       }
-                    />
-                  </label>
-                </>
-              )}
-            {effectiveFormat === "txt" && (
-              <>
-                <label>
-                  OCR language
-                  <input
-                    value={options.language ?? "eng"}
-                    onChange={(e) => update("language", e.target.value)}
-                    list="ocr-languages"
-                  />
-                </label>
-                <datalist id="ocr-languages">
-                  <option value="eng">English</option>
-                  <option value="nor">Norwegian Bokmål</option>
-                  <option value="nno">Norwegian Nynorsk</option>
-                  <option value="deu">German</option>
-                </datalist>
-                <p className="hint">
-                  Images become text through OCR. Enter a language code, or
-                  combine codes such as eng+nor. First use may download
-                  recognition resources.
-                </p>
-              </>
-            )}
-          </section>
-          <section className="section actions">
-            <button disabled={!ready} onClick={() => void run(true)}>
-              Preview conversion
-            </button>
-            <button
-              className="convert-btn"
-              disabled={!ready}
-              onClick={() => void run(false)}
-            >
-              {busy ? "Working…" : "Start conversion"}
-            </button>
-          </section>
-        </fieldset>
-        {busy && (
-          <section className="section" role="status">
-            {progress ? (
-              <>
-                <p>{progress.message}</p>
-                <progress
-                  value={progress.completed}
-                  max={progress.total || 1}
-                />
-                <p>
-                  {progress.completed} of {progress.total} finished
-                </p>
-              </>
-            ) : (
-              "Preparing…"
-            )}
-          </section>
-        )}
-        {error && (
-          <div className="section result error" role="alert">
-            {error}
+                      onChange={(e) => {
+                        const [scope, name] = e.target.value.split(":");
+                        setOptions((current) => ({
+                          ...current,
+                          preset: name || undefined,
+                          presetScope:
+                            scope as ConversionOptions["presetScope"],
+                        }));
+                      }}
+                    >
+                      <option value="">Custom settings</option>
+                      {presets.map((p) => (
+                        <option
+                          key={`${p.scope}:${p.name}`}
+                          value={`${p.scope}:${p.name}`}
+                        >
+                          {presetTitle(p)} ·{" "}
+                          {p.scope === "builtin"
+                            ? "Built-in"
+                            : p.scope === "local"
+                              ? "Project"
+                              : "Global"}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                    {selectedPreset ? (
+                      <p className="field-hint">{selectedPreset.description}</p>
+                    ) : (
+                      <p className="field-hint">
+                        Start from a preset, or make it your own.
+                      </p>
+                    )}
+                  </div>
+                  {imageOutput && (
+                    <div className="setting-group">
+                      <div className="group-label">IMAGE</div>
+                      {numberSetting("quality", "Quality", 1, 100)}
+                      <div className="settings-grid">
+                        {numberSetting("maxWidth", "Max width (px)", 1)}
+                        {numberSetting("maxHeight", "Max height (px)", 1)}
+                      </div>
+                      <label>
+                        Metadata
+                        <NativeSelect
+                          value={
+                            options.stripMetadata === undefined
+                              ? ""
+                              : String(options.stripMetadata)
+                          }
+                          onChange={(e) =>
+                            update(
+                              "stripMetadata",
+                              e.target.value === ""
+                                ? undefined
+                                : e.target.value === "true",
+                            )
+                          }
+                        >
+                          <option value="">Preset / default</option>
+                          <option value="true">Remove metadata</option>
+                          <option value="false">Keep metadata</option>
+                        </NativeSelect>
+                      </label>
+                    </div>
+                  )}
+                  {mode === "convert" &&
+                    hasPdf &&
+                    ["png", "jpg", "jpeg", "webp"].includes(format) && (
+                      <div className="setting-group">
+                        <div className="group-label">PDF RENDERING</div>
+                        {numberSetting("dpi", "Resolution (DPI)", 72, 300)}
+                        <label>
+                          PDF pages
+                          <Input
+                            placeholder="All pages, or 1-3,5"
+                            value={options.pages ?? ""}
+                            onChange={(e) =>
+                              update("pages", e.target.value || undefined)
+                            }
+                          />
+                        </label>
+                      </div>
+                    )}
+                  {effectiveFormat === "txt" && (
+                    <div className="setting-group">
+                      <div className="group-label">TEXT RECOGNITION</div>
+                      <label>
+                        OCR language
+                        <Input
+                          value={options.language ?? "eng"}
+                          onChange={(e) => update("language", e.target.value)}
+                          list="ocr-languages"
+                        />
+                      </label>
+                      <datalist id="ocr-languages">
+                        <option value="eng">English</option>
+                        <option value="nor">Norwegian Bokmål</option>
+                        <option value="nno">Norwegian Nynorsk</option>
+                        <option value="deu">German</option>
+                      </datalist>
+                      <p className="field-hint">
+                        Combine codes, such as eng+nor. Language resources may
+                        download on first use.
+                      </p>
+                    </div>
+                  )}
+                  <div className="setting-group advanced-settings">
+                    <Button
+                      variant="ghost"
+                      className="advanced-toggle"
+                      aria-expanded={advanced}
+                      onClick={() => setAdvanced(!advanced)}
+                    >
+                      Advanced settings
+                      <ChevronDown className={advanced ? "rotate-180" : ""} />
+                    </Button>
+                    {advanced && (
+                      <>
+                        <div className="settings-grid">
+                          {numberSetting("concurrency", "Parallel jobs", 1)}
+                          {numberSetting("retries", "Retry attempts", 0)}
+                        </div>
+                        <p className="field-hint">
+                          Empty values use your preset or the default.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </fieldset>
+            </div>
           </div>
-        )}
-        {notice && (
-          <p className="section" role="status">
-            {notice}
-          </p>
-        )}
-        {plans && (
-          <section className="section">
-            <h2>Preview</h2>
-            <p>
-              {plans.length} file(s), {plans.filter((p) => p.supported).length}{" "}
-              ready
-            </p>
-            {plans.map((plan, index) => (
-              <div className="file-item" key={index}>
-                <strong>
-                  {plan.supported ? "Ready" : "Cannot convert"}:{" "}
-                  {plan.inputPath}
-                </strong>
-                <div>
-                  {(plan.outputPaths || [plan.outputPath]).map((output) => (
-                    <div key={output}>→ {output}</div>
-                  ))}
-                </div>
-                {plan.reason && <p>{plan.reason}</p>}
-              </div>
-            ))}
-          </section>
-        )}
-        {result && (
-          <section className="section">
-            <h2>Results</h2>
-            <p className={`result ${result.success ? "success" : "error"}`}>
-              {result.message}
-            </p>
-            {result.jobs.map((job, index) => (
-              <div className="file-item" key={index}>
-                <strong>
-                  {job.status}: {job.input_path}
-                </strong>
-                <div>
-                  {job.error ||
-                    (job.output_paths || [job.output_path]).map((output) => (
-                      <div key={output}>{output}</div>
-                    ))}
-                </div>
-                <small>
-                  {job.duration ?? 0}ms · {job.retryCount ?? 0} retries
-                </small>
-              </div>
-            ))}
-            <div className="actions">
-              {(["result-json", "log-json", "log-text"] as const).map(
-                (kind, index) => (
-                  <button
-                    key={kind}
-                    disabled={busy}
-                    onClick={() =>
-                      void attempt(async () => {
-                        const saved = await api.exportReport(kind, result);
-                        if (saved) setNotice(`Saved report: ${saved}`);
-                      })
-                    }
-                  >
-                    {
-                      [
-                        "Export result JSON",
-                        "Export log JSON",
-                        "Export text log",
-                      ][index]
-                    }
-                  </button>
-                ),
-              )}
-            </div>
-          </section>
-        )}
-        <fieldset disabled={busy} className="controls">
-          <details className="section">
-            <summary>Manage presets</summary>
-            <p className="hint">
-              Global presets are shared with the CLI. Select a project folder to
-              use local presets.
-            </p>
-            <button
-              onClick={() =>
-                void attempt(async () => {
-                  const chosen = await api.selectOutputFolder();
-                  if (chosen) {
-                    update("projectDirectory", chosen);
-                    update("preset", undefined);
-                    await loadPresets(chosen);
-                  }
-                })
-              }
-            >
-              Select project folder
-            </button>
-            <p className="path">
-              {options.projectDirectory || "No project folder selected"}
-            </p>
-            <div className="settings-grid">
-              <label>
-                Name
-                <input
-                  value={presetName}
-                  onChange={(e) => setPresetName(e.target.value)}
-                />
-              </label>
-              <label>
-                Description
-                <input
-                  value={presetDescription}
-                  onChange={(e) => setPresetDescription(e.target.value)}
-                />
-              </label>
-              <label>
-                Type
-                <select
-                  value={presetType}
-                  onChange={(e) => setPresetType(e.target.value)}
-                >
-                  <option value="image">Image</option>
-                  <option value="pdf">PDF</option>
-                  <option value="document">Document</option>
-                </select>
-              </label>
-              <label>
-                Scope
-                <select
-                  value={presetScope}
-                  onChange={(e) => setPresetScope(e.target.value)}
-                >
-                  <option value="global">Global</option>
-                  <option value="local" disabled={!options.projectDirectory}>
-                    Local project
-                  </option>
-                </select>
-              </label>
-            </div>
-            <label>
-              Parameters
-              <input
-                value={presetParameters}
-                onChange={(e) => setPresetParameters(e.target.value)}
-                placeholder="quality=85;maxWidth=1920"
+          <footer className="run-bar">
+            <div>
+              <span
+                className={`ready-dot ${ready && modeValid ? "is-ready" : ""}`}
               />
-            </label>
-            <button
-              onClick={() =>
-                void attempt(async () => {
-                  await api.request("presets:create", {
-                    name: presetName,
-                    description: presetDescription,
-                    type: presetType,
-                    parameters: presetParameters,
-                    scope: presetScope,
-                    projectDirectory: options.projectDirectory,
-                  });
-                  await loadPresets();
-                  setNotice("Preset saved.");
-                })
-              }
-            >
-              Save preset
-            </button>
-            {presets.map((preset) => (
-              <div className="file-item" key={`${preset.scope}:${preset.name}`}>
+              <div>
                 <strong>
-                  {preset.name} ({preset.scope})
+                  {busy
+                    ? "Conversion in progress"
+                    : ready && modeValid
+                      ? "Ready to convert"
+                      : "Set up your conversion"}
                 </strong>
-                <p>{preset.description}</p>
-                <code>{JSON.stringify(preset.parameters)}</code>
-                {preset.scope !== "builtin" && (
-                  <button
-                    onClick={() =>
-                      void attempt(async () => {
-                        await api.request("presets:delete", {
-                          name: preset.name,
-                          scope: preset.scope,
-                          projectDirectory: options.projectDirectory,
-                        });
-                        update("preset", undefined);
-                        await loadPresets();
-                      })
-                    }
-                  >
-                    Delete
-                  </button>
-                )}
+                <span>
+                  {busy
+                    ? "Your files are being processed locally."
+                    : !inputPaths.length
+                      ? "Add your source files to get started."
+                      : !modeValid
+                        ? mode === "merge"
+                          ? "Select at least two PDFs."
+                          : "Select exactly one PDF."
+                        : !destination
+                          ? "Choose where to save your files."
+                          : `${fileCount} file${fileCount === 1 ? "" : "s"} → ${effectiveFormat.toUpperCase()}`}
+                </span>
               </div>
-            ))}
-          </details>
-        </fieldset>
-        {info && (
-          <>
-            <details className="section">
-              <summary>Supported conversions</summary>
-              <p className="hint">
-                Office formats are inputs. OCR extracts text from images.
-                PDF-to-PDF requires a PDF tool.
-              </p>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Input</th>
-                    <th>Output</th>
-                    <th>Tool</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {info.conversions.map((pair, index) => (
-                    <tr key={index}>
-                      <td>{pair.inputFormat}</td>
-                      <td>{pair.outputFormat}</td>
-                      <td>
-                        {pair.requiresOperation
-                          ? "PDF tools"
-                          : pair.adapter === "ocr"
-                            ? "OCR"
-                            : "Convert files"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </details>
-            <details className="section">
-              <summary>About FileConverter</summary>
-              <pre>
-                {JSON.stringify({ ...info, conversions: undefined }, null, 2)}
-              </pre>
-              <button
-                onClick={() =>
-                  void attempt(async () => {
-                    await navigator.clipboard.writeText(
-                      JSON.stringify(
-                        { ...info, conversions: undefined },
-                        null,
-                        2,
-                      ),
-                    );
-                    setNotice("Diagnostics copied.");
-                  })
-                }
+            </div>
+            <div className="run-actions">
+              <Button
+                variant="outline"
+                disabled={busy || !ready || !modeValid}
+                onClick={() => void run(true)}
               >
-                Copy diagnostics
-              </button>
-            </details>
-          </>
-        )}
-      </main>
-    </div>
+                <Eye />
+                Preview
+              </Button>
+              <Button
+                disabled={busy || !ready || !modeValid}
+                onClick={() => void run(false)}
+              >
+                {busy ? <LoaderCircle className="spin" /> : <ArrowRight />}
+                {busy ? "Working…" : "Start conversion"}
+              </Button>
+            </div>
+          </footer>
+        </main>
+        <PresetLibrary
+          open={panel === "presets"}
+          onOpenChange={(open) => {
+            if (!open) setPanel(null);
+          }}
+          presets={presets}
+          projectDirectory={options.projectDirectory}
+          busy={busy}
+          onProject={async () => {
+            const chosen = await api.selectOutputFolder();
+            if (chosen) {
+              update("projectDirectory", chosen);
+              update("preset", undefined);
+              await loadPresets(chosen);
+            }
+          }}
+          onRefresh={() => loadPresets()}
+          onUse={(preset) => {
+            setOptions((current) => ({
+              ...current,
+              preset: preset.name,
+              presetScope: preset.scope,
+            }));
+            setPanel(null);
+          }}
+          onDeleteSelected={() => update("preset", undefined)}
+        />
+        <FormatReference
+          open={panel === "formats"}
+          onOpenChange={(open) => {
+            if (!open) setPanel(null);
+          }}
+          info={info}
+        />
+        <AboutDialog
+          open={panel === "about"}
+          onOpenChange={(open) => {
+            if (!open) setPanel(null);
+          }}
+          info={info}
+        />
+      </div>
+    </TooltipProvider>
   );
 }
 export default App;
