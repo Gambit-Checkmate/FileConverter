@@ -7,6 +7,29 @@ import { createHash } from "node:crypto";
 import { affected } from "../scripts/ci-changes.mjs";
 import { selectRun } from "../scripts/release-ci.mjs";
 import { verify } from "../scripts/artifacts.mjs";
+import {
+  desktopFiles,
+  verifyDesktopFiles,
+} from "../scripts/desktop-artifacts.mjs";
+
+test("desktop promotion requires the installers for each OS and rejects legacy archives", () => {
+  for (const platform of ["linux-x64", "win-x64", "macos-arm64"]) {
+    const files = desktopFiles(platform, "1.10.0");
+    assert.doesNotThrow(() => verifyDesktopFiles(files, platform, "1.10.0"));
+    assert.throws(() => verifyDesktopFiles(files.slice(1), platform, "1.10.0"));
+    assert.throws(() =>
+      verifyDesktopFiles([...files, files[0]], platform, "1.10.0"),
+    );
+    assert.throws(() => verifyDesktopFiles(files, platform, "1.9.0"));
+    assert.throws(() =>
+      verifyDesktopFiles(
+        ["FileConverter-linux-x64-1.10.0.zip"],
+        platform,
+        "1.10.0",
+      ),
+    );
+  }
+});
 test("GUI changes do not run CLI jobs, engine changes also validate its GUI consumer", () => {
   assert.deepEqual(affected(["packages/gui/src/App.tsx"]), {
     core: false,

@@ -116,6 +116,51 @@ jobs:
       - run: npm ci
       - run: npm test --workspace=@fileconverter/gui
       - run: npm run make --workspace=@fileconverter/gui
+      - name: Install and test the Windows application
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = Get-Item packages/gui/out/installers/*-win-x64.exe
+          $installed = Join-Path $env:LOCALAPPDATA 'Programs/fileconverter-desktop'
+          $process = Start-Process $installer.FullName -ArgumentList '/S' -PassThru
+          $timer = [System.Diagnostics.Stopwatch]::StartNew()
+          while (!$process.WaitForExit(30000)) {
+            $files = @(Get-ChildItem $installed -File -Recurse -ErrorAction SilentlyContinue).Count
+            Write-Host "Installing: $files files after $([int]$timer.Elapsed.TotalSeconds)s"
+            if ($timer.Elapsed.TotalMinutes -ge 10) { throw 'Installer timed out after 10 minutes' }
+          }
+          $process.Refresh()
+          if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
+          if (!(Test-Path "$installed/FileConverter.exe")) { throw 'Installed executable missing' }
+          if (!(Test-Path "$installed/Uninstall FileConverter.exe")) { throw 'Uninstaller missing' }
+          $shortcuts = Get-ChildItem "$env:APPDATA/Microsoft/Windows/Start Menu/Programs" -Filter 'FileConverter.lnk' -Recurse
+          if (!$shortcuts) { throw 'Start menu shortcut missing' }
+          node scripts/smoke-installed-desktop.mjs "$installed/resources/app"
+          node scripts/smoke-desktop-launch.mjs "$installed/FileConverter.exe"
+      - name: Mount and test the macOS application
+        if: runner.os == 'macOS'
+        run: |
+          mount="$RUNNER_TEMP/fileconverter-dmg"
+          mkdir -p "$mount"
+          hdiutil attach packages/gui/out/installers/*.dmg -mountpoint "$mount" -nobrowse
+          trap 'hdiutil detach "$mount"' EXIT
+          test -L "$mount/Applications"
+          cp -R "$mount/FileConverter.app" "$RUNNER_TEMP/FileConverter.app"
+          node scripts/smoke-installed-desktop.mjs "$RUNNER_TEMP/FileConverter.app/Contents/Resources/app"
+          node scripts/smoke-desktop-launch.mjs "$RUNNER_TEMP/FileConverter.app/Contents/MacOS/FileConverter"
+      - name: Install and test the Linux application
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y ./packages/gui/out/installers/*.deb
+          test -f /usr/share/applications/no.marentius.fileconverter.desktop
+          node scripts/smoke-installed-desktop.mjs /opt/FileConverter/resources/app
+          xvfb-run -a node scripts/smoke-desktop-launch.mjs /opt/FileConverter/FileConverter
+          mkdir -p "$RUNNER_TEMP/appimage"
+          cd "$RUNNER_TEMP/appimage"
+          "$GITHUB_WORKSPACE"/packages/gui/out/installers/*.AppImage --appimage-extract > /dev/null
+          test -x squashfs-root/AppRun
+          cd "$GITHUB_WORKSPACE"
+          node scripts/smoke-installed-desktop.mjs "$RUNNER_TEMP/appimage/squashfs-root/resources/app"
       - name: Record source commit and checksums
         run: npm run artifact:record -- gui artifacts/gui-${{ matrix.platform }}
       - uses: actions/upload-artifact@v7
