@@ -55,8 +55,37 @@ converter ocr -i scan.png -o result.txt
 | **Images** | PNG, JPG, JPEG, WebP, TIFF, BMP, GIF, HEIC | JPG, PNG, WebP, TIFF |
 | **Office** | DOCX, XLSX, PPTX, ODT, RTF | PDF, HTML, TXT, Markdown |
 | **Documents** | Markdown, HTML, TXT | PDF, HTML, Markdown, TXT |
-| **PDF** | PDF | PDF (merge, split, optimize) |
+| **PDF** | PDF | DOCX, TXT, PNG, JPG, WebP, PDF (merge, split, optimize) |
 | **OCR** | PNG, JPG, TIFF, BMP, WebP | TXT |
+
+### PDF to Word (DOCX)
+
+```bash
+converter convert -i report.pdf -o output/ --to docx
+```
+
+PDF → DOCX runs locally with the existing open-source PDF.js (Apache-2.0),
+canvas and JSZip (MIT) packages. It requires no paid license, key, service or
+additional installation. DOCX is also available in the desktop output format list.
+
+Text is reconstructed as editable, positioned Word paragraphs with font size,
+basic font styling and color. Complete, simple ruled grids become editable Word
+tables. Each page retains its dimensions; images, table rules, shading and other
+graphics are rendered into a background image per page (150 DPI by default).
+The graphics are preserved visually rather than as individually editable objects.
+
+This is a best-effort reconstruction, **not a guarantee of identical layout**.
+Fonts must be available in the Word viewer and are not embedded. Borderless,
+merged-cell and complex tables retain positioned text rather than native table
+structure. Scanned pages and pages with rotated/skewed text are kept as page
+images, with no editable text or OCR. Google Docs may interpret Word positioning
+differently. The desktop UI explains these limits before conversion; library
+results also include a warning describing image-only pages and detected tables.
+
+Library callers can select pages with `pages` and set graphics `dpi` (72–300).
+Conversions are limited to 50 pages, 25 million pixels per page, 125 million pixels
+in total and 50,000 text items. Word pages cannot exceed 22 inches per dimension.
+Failed conversions preserve any existing destination file.
 
 ## CLI Reference
 

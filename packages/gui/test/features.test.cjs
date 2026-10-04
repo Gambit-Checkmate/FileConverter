@@ -29,6 +29,37 @@ async function image(filename) {
     .png()
     .toFile(filename);
 }
+test("PDF to DOCX is advertised, previewed and published without overwriting existing files", () =>
+  fixture(async (root) => {
+    const input = path.join(root, "document.pdf"),
+      out = path.join(root, "out");
+    const pdf = await PDFDocument.create();
+    pdf
+      .addPage([200, 200])
+      .drawText("Editable Word output", { x: 20, y: 150, size: 12 });
+    fs.writeFileSync(input, await pdf.save());
+    const info = await handleRequest("info", {});
+    assert.ok(
+      info.conversions.some(
+        (pair) => pair.inputFormat === "pdf" && pair.outputFormat === "docx",
+      ),
+    );
+    const preview = await buildPlans([input], out, "docx");
+    assert.equal(preview[0].supported, true);
+    assert.equal(fs.existsSync(out), false);
+    const result = await convertFiles([input], out, "docx", { retries: 0 });
+    assert.equal(result.successfulJobs, 1);
+    const destination = path.join(out, "document.docx");
+    const zip = await require("jszip").loadAsync(fs.readFileSync(destination));
+    assert.match(
+      await zip.file("word/document.xml").async("string"),
+      /Editable Word output/,
+    );
+    const before = fs.readFileSync(destination);
+    const again = await buildPlans([input], out, "docx");
+    assert.equal(again[0].supported, false);
+    assert.deepEqual(fs.readFileSync(destination), before);
+  }));
 test("preview is read-only, recursive scans skip output and symlinks, and collisions are rejected", () =>
   fixture(async (root) => {
     const nested = path.join(root, "nested");

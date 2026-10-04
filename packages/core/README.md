@@ -55,8 +55,28 @@ converter ocr -i scan.png -o result.txt --lang eng
 | **Images** | PNG, JPG, JPEG, WebP, TIFF, BMP, GIF, HEIC | JPG, PNG, WebP, TIFF |
 | **Office** | DOCX, XLSX, PPTX, ODT, RTF | PDF, HTML, TXT, Markdown |
 | **Documents** | Markdown, HTML, TXT | PDF, HTML, Markdown, TXT |
-| **PDF** | PDF | PDF (merge, split, optimize) |
+| **PDF** | PDF | DOCX, TXT, PNG, JPG, WebP, PDF (merge, split, optimize) |
 | **OCR** | PNG, JPG, TIFF, BMP, WebP | TXT |
+
+### PDF to Word
+
+```bash
+converter convert -i report.pdf -o output/ --to docx
+```
+
+Local, open-source conversion with PDF.js, canvas and JSZip; no paid license or
+service is required. Text becomes editable positioned paragraphs, and simple
+complete ruled tables become native Word tables. Images and other graphics are
+preserved together in a page background at 150 DPI. Scanned pages and pages with
+rotated/skewed text remain images without editable text or OCR.
+
+Layout reconstruction is best effort: fonts are not embedded, complex or
+borderless tables are not reconstructed as native tables, and exact appearance
+in Word or Google Docs is not guaranteed. The desktop UI explains these limits;
+library conversion metadata describes detected tables and image-only pages.
+Library callers can set `pages` and `dpi` (72–300). Limits are 50 pages, 25 million
+pixels per page, 125 million pixels per job, 50,000 text items and Word's maximum
+page dimension of 22 inches. Existing destination files survive conversion failure.
 
 ## Commands
 
