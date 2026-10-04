@@ -17,4 +17,8 @@ contextBridge.exposeInMainWorld("fileConverter", {
   },
   openOutputFolder: (folderPath) =>
     ipcRenderer.invoke("folder:open", folderPath),
+  openOutputFile: (filePath) =>
+    ipcRenderer.invoke("output:action", "open", filePath),
+  revealOutputFile: (filePath) =>
+    ipcRenderer.invoke("output:action", "reveal", filePath),
 });
