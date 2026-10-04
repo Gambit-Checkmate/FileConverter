@@ -38,13 +38,15 @@ Both products start the independent scheme at their already published `1.8.2` ba
 
 `CI` always runs a small changes/automation job and a stable aggregate `CI` check. Branch protection requires the aggregate check, so an intentionally skipped product is acceptable but a failed or cancelled affected product is not.
 
-- Core changes: lint, build, all unit/integration/E2E tests and coverage on Node 22 and 24; standalone CLI archives on Linux x64, Windows x64, and macOS arm64; desktop tests/packages on those three platforms because the app consumes core.
-- GUI-only changes: desktop tests/packages on the three supported platforms.
+- Core changes: lint, build, all unit/integration/E2E tests and coverage on Node 22 and 24; standalone CLI archives on Linux x64, Windows x64, and macOS arm64; desktop tests/installers on those three platforms because the app consumes core.
+- GUI-only changes: desktop tests/installers on the three supported platforms.
 - Shared lockfile, tooling, release configuration, or workflow changes: validate both products.
 - Documentation-only changes: automation/aggregate checks, without expensive product rebuilds.
 - Superseded PR runs are cancelled. Each main commit has its own concurrency group, so later pushes do not replace its queued CI run. In-flight publication is not cancelled.
 
-The root lockfile is used by production staging with `npm ci`. Native packages are installed on the target platform. CLI staging executes `--version` before archiving, and the Linux job additionally creates the exact npm tarball. Every artifact records its product/version, embedded core version, platform, source SHA, and SHA-256 checksums. Downloads remain available as CI artifacts for 14 days.
+The root lockfile is used by production staging with `npm ci`. Native packages are installed on the target platform. CLI staging executes `--version` before archiving, and the Linux job additionally creates the exact npm tarball. Desktop downloads are NSIS setup on Windows, DMG on macOS, and DEB/AppImage on Linux. CI verifies installation shortcuts/application-menu integration and runs native conversion through the worker from the installed or extracted application, not the checkout.
+
+Every artifact records its product/version, embedded core version, platform, source SHA, and SHA-256 checksums. Downloads remain available as CI artifacts for 14 days.
 
 ## CD
 
@@ -56,7 +58,7 @@ After a checked release PR is merged:
 2. release-please creates product-specific draft releases and tags.
 3. Each product downloads artifacts from a successful main CI run for that **exact tagged commit**, verifies all three platforms, hashes, package versions, and the tag's commit against the CI SHA. If main has advanced, it locates (and, when necessary, waits for) the tagged commit’s CI rather than using an unrelated later CI completion.
 4. CLI publication uploads its archives and publishes the verified `.tgz` using npm OIDC/provenance. An already published version is accepted only if its integrity matches, enabling safe retry after partial success.
-5. Desktop publication uploads its three ZIPs independently. It never needs npm publication to finish first.
+5. Desktop publication uploads the Windows NSIS setup, macOS DMG, and Linux DEB/AppImage independently. It never needs npm publication to finish first.
 6. A product's draft is published only after its required uploads/publication succeed. Desktop releases are marked GitHub's latest; CLI releases remain separately discoverable.
 
 Each release includes `SHA256SUMS.txt` and `release-manifest.json`. CD does not reinstall dependencies or rebuild packages. A failed publish leaves that product's release draft; use **Re-run failed jobs** while its CI artifacts are retained. Do not rerun the entire release planner to recover a partially published release. Never move or reuse published version tags.

@@ -3,6 +3,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { desktopFiles, verifyDesktopFiles } from "./desktop-artifacts.mjs";
 const platforms = ["linux-x64", "win-x64", "macos-arm64"];
 const hash = (file) =>
   createHash("sha256").update(fs.readFileSync(file)).digest("hex");
@@ -74,12 +75,15 @@ if (
     if (!platforms.includes(platform)) throw new Error("Invalid platform.");
     fs.mkdirSync(directory, { recursive: true });
     if (product === "gui") {
-      const files = walk("packages/gui/out/make/zip").filter((f) =>
-        f.endsWith(`-${version}.zip`),
-      );
-      if (files.length !== 1)
-        throw new Error(`Expected one desktop ZIP, got ${files.length}.`);
-      fs.copyFileSync(files[0], path.join(directory, path.basename(files[0])));
+      const expected = desktopFiles(platform, version);
+      for (const name of expected) {
+        const files = walk("packages/gui/out/installers").filter(
+          (f) => path.basename(f) === name,
+        );
+        if (files.length !== 1)
+          throw new Error(`Expected one ${name}, got ${files.length}.`);
+        fs.copyFileSync(files[0], path.join(directory, name));
+      }
     }
     const files = fs
       .readdirSync(directory)
@@ -130,12 +134,18 @@ if (
           artifact.coreVersion !== pkg("cli").version
         )
           throw new Error("Platform/engine mismatch.");
-        const archives = artifact.files.filter((file) =>
-          file.endsWith(product === "cli" ? ".tar.gz" : ".zip"),
-        );
-        if (archives.length !== 1)
-          throw new Error("Expected one archive per platform.");
+        if (product === "gui")
+          verifyDesktopFiles(
+            artifact.files.map((file) => path.basename(file)),
+            platform,
+            version,
+          );
         if (product === "cli") {
+          if (
+            artifact.files.filter((file) => file.endsWith(".tar.gz")).length !==
+            1
+          )
+            throw new Error("Expected one CLI archive per platform.");
           const tarballs = artifact.files.filter((file) =>
             file.endsWith(".tgz"),
           );
