@@ -88,6 +88,8 @@ interface Window {
       options?: ConversionOptions,
     ): Promise<ConversionResult>;
     openOutputFolder(folderPath: string): Promise<void>;
+    openOutputFile(filePath: string): Promise<void>;
+    revealOutputFile(filePath: string): Promise<void>;
     request(
       action: "inputs:inspect",
       payload: object,

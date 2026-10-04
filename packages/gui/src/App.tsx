@@ -818,19 +818,55 @@ function App() {
                                   <strong title={job.input_path}>
                                     {basename(job.input_path)}
                                   </strong>
-                                  {job.error ? (
-                                    <p className="error-text">{job.error}</p>
+                                  {job.status !== "completed" ? (
+                                    <p className="error-text">
+                                      {job.error || "Conversion failed."}
+                                    </p>
                                   ) : (
                                     (job.output_paths || [job.output_path]).map(
                                       (output) => (
-                                        <p
-                                          className="output-path"
+                                        <div
+                                          className="output-result"
                                           key={output}
-                                          title={output}
                                         >
-                                          <ArrowRight />
-                                          {output}
-                                        </p>
+                                          <p
+                                            className="output-path"
+                                            title={output}
+                                          >
+                                            <ArrowRight />
+                                            {output}
+                                          </p>
+                                          <div className="output-file-actions">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() =>
+                                                void attempt(async () => {
+                                                  await api.openOutputFile(
+                                                    output,
+                                                  );
+                                                })
+                                              }
+                                            >
+                                              <ArrowUpRight />
+                                              Open file
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() =>
+                                                void attempt(async () => {
+                                                  await api.revealOutputFile(
+                                                    output,
+                                                  );
+                                                })
+                                              }
+                                            >
+                                              <FolderOpen />
+                                              Reveal in folder
+                                            </Button>
+                                          </div>
+                                        </div>
                                       ),
                                     )
                                   )}

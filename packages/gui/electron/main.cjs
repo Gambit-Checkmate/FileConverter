@@ -12,13 +12,19 @@ const {
   assertSafeAbsolutePath,
 } = require("./path-allowlist.cjs");
 const { validateRequest } = require("./request-validation.cjs");
+const {
+  rememberCompletedOutputs,
+  assertCompletedOutput,
+} = require("./output-actions.cjs");
 const pathAllowlist = new PathAllowlist();
 const saveDestinations = new Set();
+const completedOutputs = new Set();
 let mainWindow;
 
 function createWindow() {
   pathAllowlist.clear();
   saveDestinations.clear();
+  completedOutputs.clear();
   mainWindow = new BrowserWindow({
     title: "FileConverter",
     icon: path.join(__dirname, "../icons/icon.png"),
@@ -38,6 +44,7 @@ function createWindow() {
   mainWindow.on("closed", () => {
     pathAllowlist.clear();
     saveDestinations.clear();
+    completedOutputs.clear();
     mainWindow = null;
   });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
@@ -132,22 +139,29 @@ app.whenReady().then(() => {
     "files:convert",
     async (event, inputPaths, outputDir, format, options = {}) => {
       fromMainWindow(event);
-      return requestWorker(
+      const request = validateRequest(
         "convert",
-        validateRequest(
-          "convert",
-          {
-            inputPaths,
-            outputDir,
-            format,
-            options,
-          },
-          pathAllowlist,
-          saveDestinations,
-        ),
+        { inputPaths, outputDir, format, options },
+        pathAllowlist,
+        saveDestinations,
       );
+      const result = await requestWorker("convert", request);
+      rememberCompletedOutputs(result, request.outputDir, completedOutputs);
+      return result;
     },
   );
+  ipcMain.handle("output:action", async (event, action, outputPath) => {
+    fromMainWindow(event);
+    if (!["open", "reveal"].includes(action))
+      throw new Error("Unknown output action.");
+    const real = assertCompletedOutput(outputPath, completedOutputs);
+    if (action === "reveal") {
+      shell.showItemInFolder(real);
+      return;
+    }
+    const error = await shell.openPath(real);
+    if (error) throw new Error(error);
+  });
   ipcMain.handle("worker:request", async (event, action, payload = {}) => {
     fromMainWindow(event);
     if (
