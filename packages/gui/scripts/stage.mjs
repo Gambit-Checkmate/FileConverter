@@ -31,6 +31,11 @@ fs.writeFileSync(
     {
       name: "fileconverter-desktop",
       productName: guiPackage.productName,
+      desktopName: "no.marentius.fileconverter",
+      description: "Local image, document, PDF and OCR conversion",
+      author: { name: "Marentius", url: "https://marentius.no" },
+      homepage: "https://marentius.no/#fileconverter",
+      license: "MIT",
       version: guiPackage.version,
       main: "electron/main.cjs",
       dependencies: {

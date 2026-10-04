@@ -110,7 +110,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/release-ci.mjs
-      - name: Download the tested desktop ZIPs
+      - name: Download the tested desktop installers
         env:
           GH_TOKEN: ${{ github.token }}
           CI_RUN: ${{ steps.ci.outputs.run }}
@@ -120,7 +120,7 @@ jobs:
           CI_SHA: ${{ steps.ci.outputs.sha }}
           RELEASE_TAG: ${{ needs.release-please.outputs.gui_tag }}
         run: node scripts/artifacts.mjs verify-release gui artifacts
-      - name: Upload tested desktop ZIPs
+      - name: Upload tested desktop installers
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.release-please.outputs.gui_tag }}
