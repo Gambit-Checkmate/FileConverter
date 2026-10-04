@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import sharp from 'sharp';
+import os from 'os';
 
 describe('Converter Integration Tests', () => {
   let converter: Converter;
@@ -150,6 +151,31 @@ describe('Converter Integration Tests', () => {
   });
 
   describe('Dry Run Mode', () => {
+    it.each(['gif', 'webp'])('warns that animated %s loses frames in dry-run and conversion', async (format) => {
+      const inputFile = path.join(__dirname, '..', 'fixtures', `animated.${format}`);
+      const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fileconverter-animation-'));
+      const outputFile = path.join(outputDir, 'animated.png');
+      try {
+        const dryRun = await converter.convert({
+          input: inputFile, output: outputDir, outputFile, format: 'png', dryRun: true, quiet: true,
+        });
+        expect(dryRun.plans?.[0].warning).toMatch(/first frame/i);
+        expect(fs.existsSync(outputFile)).toBe(false);
+
+        const converted = await converter.convert({
+          input: inputFile, output: outputDir, outputFile, format: 'png', quiet: true,
+        });
+        expect(converted.successfulJobs).toBe(1);
+        expect(converted.plans?.[0].warning).toMatch(/first frame/i);
+        const output = await sharp(outputFile).removeAlpha().raw().toBuffer();
+        expect(output[0]).toBeGreaterThan(200);
+        expect(output[1]).toBeLessThan(20);
+        expect(output[2]).toBeLessThan(20);
+      } finally {
+        fs.rmSync(outputDir, { recursive: true, force: true });
+      }
+    });
+
     it('reports a recognized format pair without an adapter as unsupported', async () => {
       const dryRunInputDir = path.join(testInputDir, 'unsupported-pair');
       const dryRunOutputDir = path.join(testOutputDir, 'unsupported-pair');

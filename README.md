@@ -86,6 +86,7 @@ Library callers can select pages with `pages` and set graphics `dpi` (72–300).
 Conversions are limited to 50 pages, 25 million pixels per page, 125 million pixels
 in total and 50,000 text items. Word pages cannot exceed 22 inches per dimension.
 Failed conversions preserve any existing destination file.
+Animated GIF and WebP inputs are converted using only their first frame. The CLI warns for multi-frame inputs during both conversion and `--dry-run`; `--json` includes the warning in the plan.
 
 ## CLI Reference
 
