@@ -5,6 +5,7 @@ import { BaseAdapter, ConversionParameters, ConversionResult } from '../base-ada
 import { ConversionPlan } from '../../types';
 import { validatePath } from '../../path-security';
 import logger from '../../logger';
+import { convertPdfToDocx } from './pdf-docx';
 import {
   isRasterImageFormat,
   buildPageOutputPath,
@@ -16,13 +17,14 @@ import {
 
 /**
  * PDF adapter using pdf-lib for merge, split, and basic optimization,
- * and pdfjs + @napi-rs/canvas + Sharp for PDF → image rasterization.
+ * pdfjs + @napi-rs/canvas + Sharp for PDF → image rasterization,
+ * and PDF.js + canvas + JSZip for layout-oriented, editable DOCX reconstruction.
  * No external system binaries required.
  */
 export class PdfAdapter extends BaseAdapter {
   readonly name = 'pdf';
   readonly supportedInputFormats = ['pdf'];
-  readonly supportedOutputFormats = ['pdf', 'txt', 'png', 'jpg', 'jpeg', 'webp'];
+  readonly supportedOutputFormats = ['pdf', 'txt', 'docx', 'png', 'jpg', 'jpeg', 'webp'];
 
   async convert(
     plan: ConversionPlan,
@@ -64,6 +66,9 @@ export class PdfAdapter extends BaseAdapter {
               }
             : undefined,
         };
+      } else if (plan.outputFormat === 'docx') {
+        result = await convertPdfToDocx(plan.inputPath, plan.outputPath, parameters);
+        if (result.metadata?.warning) logger.warn(result.metadata.warning);
       } else if (plan.outputFormat === 'txt') {
         result = await this.extractText(plan.inputPath, plan.outputPath);
       } else if (parameters.operation === 'merge') {

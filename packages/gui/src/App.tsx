@@ -988,6 +988,13 @@ function App() {
                         </NativeSelect>
                       </label>
                     )}
+                    {mode === "convert" && format === "docx" && hasPdf && (
+                      <p className="destination-path">
+                        PDF to Word reconstructs editable text and simple ruled tables.
+                        Images and graphics form a page background. Scanned or rotated
+                        pages remain images; fonts and complex layouts may differ.
+                      </p>
+                    )}
                     <label>
                       Save to
                       <Button
