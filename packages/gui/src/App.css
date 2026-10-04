@@ -958,6 +958,22 @@ label:last-child {
   flex-shrink: 0;
   margin-top: 2px;
 }
+.output-result {
+  min-width: 0;
+}
+.output-file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+.output-file-actions button {
+  font-size: 9px;
+}
+.output-file-actions svg {
+  width: 12px;
+  height: 12px;
+}
 .activity-row small {
   display: block;
   font-size: 8px;

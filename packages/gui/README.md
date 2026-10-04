@@ -12,6 +12,7 @@ Electron and React desktop app for the FileConverter conversion engine. The pack
 - Apply built-in presets, or create and delete custom global/project presets. Local presets require an explicitly selected project folder; global presets are shared with the CLI.
 - Configure parallel jobs and retry attempts, including zero retries.
 - Export result JSON, attempt logs as JSON, and readable text logs, including failed jobs.
+- Open or reveal individual successful output files from the results list. If a file was moved or deleted after conversion, the app reports that it is no longer available.
 - Inspect supported format pairs and copy application/runtime version information.
 
 Existing output files are never overwritten. Files with conflicting destination names are rejected before conversion. Select a different output folder or rename inputs to resolve collisions.
