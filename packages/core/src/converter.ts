@@ -87,6 +87,11 @@ export class Converter {
       
       // Show summary
       if (!quiet) this.displaySummary(plans, supportedPlans, unsupportedPlans, dryRun);
+      if (!quiet) {
+        for (const plan of plans) {
+          if (plan.warning) console.warn(chalk.yellow(`Warning: ${path.basename(plan.inputPath)}: ${plan.warning}`));
+        }
+      }
       
       if (dryRun) {
         // Show detailed plan for dry-run
@@ -104,10 +109,12 @@ export class Converter {
       const finalParameters = await this.resolveParameters(options);
 
       // Start job queue and progress tracking
-      return await this.processJobs(plans, concurrency, retries, finalParameters, {
+      const result = await this.processJobs(plans, concurrency, retries, finalParameters, {
         jsonPath: logFileJson,
         textPath: logFileTxt,
       }, quiet);
+      result.plans = plans;
+      return result;
       
     } catch (error) {
       logger.error('Error during conversion', { error });

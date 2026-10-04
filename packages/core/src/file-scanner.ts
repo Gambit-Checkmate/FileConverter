@@ -6,6 +6,7 @@ import { validatePath, sanitizeFilename } from './path-security';
 import { sanitizeLogValue } from './log-sanitizer';
 import logger from './logger';
 import { AdapterManager } from './adapters/adapter-manager';
+import sharp from 'sharp';
 
 export type ConversionSupportChecker = (inputFormat: string, outputFormat: string) => boolean;
 
@@ -96,6 +97,18 @@ async function createConversionPlan(
       ? `Conversion from '${inputFormat}' to '${targetFormat}' is not supported`
       : `Output format '${targetFormat}' is not supported`;
   }
+
+  let warning: string | undefined;
+  if (supported && (inputFormat === 'gif' || inputFormat === 'webp')) {
+    try {
+      const { pages } = await sharp(inputPath).metadata();
+      if (pages && pages > 1) {
+        warning = `Animated ${inputFormat.toUpperCase()} has ${pages} frames; only the first frame will be converted.`;
+      }
+    } catch {
+      // Leave malformed-image errors to the adapter so a batch can continue.
+    }
+  }
   
   return {
     inputPath,
@@ -103,6 +116,7 @@ async function createConversionPlan(
     inputFormat,
     outputFormat: targetFormat,
     supported,
-    reason
+    reason,
+    warning
   };
 }
