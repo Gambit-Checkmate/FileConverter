@@ -61,7 +61,7 @@ export class AdapterManager {
     return await adapter.convert(plan, parameters);
   }
 
-  getSupportedConversions(): Array<{
+  getSupportedConversions(options: { includeSameFormat?: boolean } = {}): Array<{
     inputFormat: string;
     outputFormat: string;
     adapter: string;
@@ -75,7 +75,7 @@ export class AdapterManager {
     for (const adapter of this.adapters) {
       for (const inputFormat of adapter.supportedInputFormats) {
         for (const outputFormat of adapter.supportedOutputFormats) {
-          if (inputFormat !== outputFormat) {
+          if ((options.includeSameFormat || inputFormat !== outputFormat) && adapter.canHandle(inputFormat, outputFormat)) {
             conversions.push({
               inputFormat,
               outputFormat,

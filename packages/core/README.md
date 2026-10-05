@@ -52,11 +52,13 @@ converter ocr -i scan.png -o result.txt --lang eng
 
 | Category | Input | Output |
 |----------|-------|--------|
-| **Images** | PNG, JPG, JPEG, WebP, TIFF, BMP, GIF, HEIC | JPG, PNG, WebP, TIFF |
+| **Images** | PNG, JPG, JPEG, WebP, TIFF, BMP, GIF, HEIC, SVG | JPG, JPEG, PNG, WebP, TIFF |
 | **Office** | DOCX, XLSX, PPTX, ODT, RTF | PDF, HTML, TXT, Markdown |
-| **Documents** | Markdown, HTML, TXT | PDF, HTML, Markdown, TXT |
-| **PDF** | PDF | DOCX, TXT, PNG, JPG, WebP, PDF (merge, split, optimize) |
-| **OCR** | PNG, JPG, TIFF, BMP, WebP | TXT |
+| **Documents** | MD, Markdown, HTML, HTM, TXT | PDF, HTML, MD, TXT |
+| **PDF** | PDF | DOCX, TXT, PNG, JPG, JPEG, WebP, PDF (merge, split, optimize) |
+| **OCR** | PNG, JPG, JPEG, TIFF, BMP, WebP | TXT |
+
+Run `converter formats` for the conversion matrix generated from the registered adapters, or `converter formats --json` for individual input/output pairs with adapter names and `requiresOperation` flags. Same-format image and document conversions are supported; PDF → PDF requires `converter pdf --merge`, `--split`, or `--compress`. OCR may download language models on first use; `converter ocr --lang <language>` selects the language. Office formats are inputs only: DOCX/XLSX/PPTX/ODT/RTF export to PDF, HTML, TXT, or MD. The separate PDF → DOCX adapter provides the best-effort reconstruction described below.
 
 Animated GIF and WebP inputs are converted using only their first frame. The CLI warns for multi-frame inputs during both conversion and `--dry-run`; `--json` includes the warning in the plan.
 

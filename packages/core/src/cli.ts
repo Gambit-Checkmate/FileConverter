@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import path from 'path';
 import { Converter } from './converter';
 import { ConversionOptions } from './types';
-import { getSupportedFormats } from './file-detector';
+import { AdapterManager } from './adapters/adapter-manager';
 import { listPresets } from './presets/image-presets';
 import { ConfigManager } from './config/config-manager';
 import { parsePositiveInt, parseIntInRange } from './input-validation';
@@ -150,30 +150,34 @@ program
 
 program
   .command('formats')
-  .description('Show supported file formats')
-  .action(() => {
-    const formats = getSupportedFormats();
+  .description('Show supported input/output conversion pairs')
+  .option('--json', 'Write supported conversion pairs as JSON')
+  .action((options) => {
+    // Registering adapters may log at debug level; JSON stdout must stay clean.
+    if (options.json) setConsoleLoggingEnabled(false);
+    const pairs = new AdapterManager().getSupportedConversions({ includeSameFormat: true })
+      .map(pair => ({
+        ...pair,
+        requiresOperation: pair.inputFormat === 'pdf' && pair.outputFormat === 'pdf',
+      }));
+    if (options.json) {
+      console.log(JSON.stringify(pairs));
+      return;
+    }
 
-    console.log(chalk.bold.blue('=== SUPPORTED FILE FORMATS ==='));
-    console.log('');
-
-    const imageFormats = ['png', 'jpg', 'jpeg', 'webp', 'tiff', 'bmp', 'gif', 'heic'];
-    const officeFormats = ['docx', 'xlsx', 'pptx', 'odt', 'rtf'];
-    const documentFormats = ['pdf', 'md', 'html', 'txt'];
-
-    console.log(chalk.bold.green('Image Formats:'));
-    console.log('  ' + imageFormats.filter(f => formats.includes(f)).join(', '));
-    console.log('');
-
-    console.log(chalk.bold.green('Office Formats:'));
-    console.log('  ' + officeFormats.filter(f => formats.includes(f)).join(', '));
-    console.log('');
-
-    console.log(chalk.bold.green('Document Formats:'));
-    console.log('  ' + documentFormats.filter(f => formats.includes(f)).join(', '));
-    console.log('');
-
-    console.log(chalk.gray(`Total: ${formats.length} supported formats`));
+    console.log(chalk.bold.blue('=== SUPPORTED FILE FORMATS / CONVERSION PAIRS ==='));
+    for (const adapter of new Set(pairs.map(pair => pair.adapter))) {
+      console.log('\n' + chalk.bold.green(`${adapter === 'ocr' ? 'OCR' : adapter} adapter:`));
+      const adapterPairs = pairs.filter(pair => pair.adapter === adapter);
+      for (const input of new Set(adapterPairs.map(pair => pair.inputFormat))) {
+        const outputs = adapterPairs.filter(pair => pair.inputFormat === input)
+          .map(pair => pair.outputFormat + (pair.requiresOperation ? '*' : ''));
+        console.log(`  ${input} -> ${outputs.join(', ')}`);
+      }
+    }
+    console.log('\n* PDF -> PDF requires converter pdf --merge, --split or --compress.');
+    console.log('OCR may download language models on first use; use converter ocr --lang <language>.');
+    console.log(chalk.gray(`Total: ${pairs.length} supported conversion pairs`));
   });
 
 program
