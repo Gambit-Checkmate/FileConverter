@@ -66,6 +66,7 @@ program
         quiet: options.json || false,
       });
       if (options.json) console.log(JSON.stringify(result));
+      if (!options.dryRun && result.failedJobs > 0) process.exitCode = 1;
     } catch (error) {
       logger.error('CLI error', { error });
       console.error(chalk.red('Error:'), error instanceof Error ? error.message : error);
@@ -113,7 +114,8 @@ program
         ...(inputFiles ? { inputFiles } : {}),
       };
 
-      await converter.convert(convertOptions);
+      const result = await converter.convert(convertOptions);
+      if (result.failedJobs > 0) process.exitCode = 1;
     } catch (error) {
       logger.error('PDF CLI error', { error });
       console.error(chalk.red('Error:'), error instanceof Error ? error.message : error);
@@ -131,13 +133,14 @@ program
     try {
       const converter = new Converter();
 
-      await converter.convert({
+      const result = await converter.convert({
         input: options.in,
         output: path.dirname(options.out),
         outputFile: options.out,
         format: 'txt',
         language: options.lang,
       });
+      if (result.failedJobs > 0) process.exitCode = 1;
     } catch (error) {
       logger.error('OCR CLI error', { error });
       console.error(chalk.red('Error:'), error instanceof Error ? error.message : error);
