@@ -58,6 +58,8 @@ converter ocr -i scan.png -o result.txt
 | **PDF** | PDF | DOCX, TXT, PNG, JPG, WebP, PDF (merge, split, optimize) |
 | **OCR** | PNG, JPG, TIFF, BMP, WebP | TXT |
 
+Animated GIF and WebP inputs are converted using only their first frame. The CLI warns for multi-frame inputs during both conversion and `--dry-run`; `--json` includes the warning in the plan.
+
 ### PDF to Word (DOCX)
 
 ```bash

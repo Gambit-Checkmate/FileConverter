@@ -315,6 +315,7 @@ async function convertFiles(
         error,
         duration: job.duration,
         retryCount: job.retryCount,
+        warning: plan.warning,
       });
     }
     logs = queue.getJobLogs().map((log) => ({
