@@ -5,6 +5,8 @@ export interface ConversionPlan {
   outputFormat: string;
   supported: boolean;
   reason?: string;
+  /** Non-fatal conversion limitation shown in previews and results. */
+  warning?: string;
 }
 
 export interface ConversionOptions {

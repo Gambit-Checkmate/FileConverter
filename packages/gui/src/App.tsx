@@ -770,6 +770,12 @@ function App() {
                                   {plan.reason && (
                                     <p className="error-text">{plan.reason}</p>
                                   )}
+                                  {plan.warning && (
+                                    <p className="warning-text">
+                                      <CircleAlert aria-hidden="true" />
+                                      {plan.warning}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             ))}
@@ -874,6 +880,12 @@ function App() {
                                     {job.duration ?? 0}ms ·{" "}
                                     {job.retryCount ?? 0} retries
                                   </small>
+                                  {job.warning && (
+                                    <p className="warning-text">
+                                      <CircleAlert aria-hidden="true" />
+                                      {job.warning}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             ))}
@@ -990,9 +1002,10 @@ function App() {
                     )}
                     {mode === "convert" && format === "docx" && hasPdf && (
                       <p className="destination-path">
-                        PDF to Word reconstructs editable text and simple ruled tables.
-                        Images and graphics form a page background. Scanned or rotated
-                        pages remain images; fonts and complex layouts may differ.
+                        PDF to Word reconstructs editable text and simple ruled
+                        tables. Images and graphics form a page background.
+                        Scanned or rotated pages remain images; fonts and
+                        complex layouts may differ.
                       </p>
                     )}
                     <label>
