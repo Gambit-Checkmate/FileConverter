@@ -58,6 +58,8 @@ converter ocr -i scan.png -o result.txt --lang eng
 | **PDF** | PDF | DOCX, TXT, PNG, JPG, WebP, PDF (merge, split, optimize) |
 | **OCR** | PNG, JPG, TIFF, BMP, WebP | TXT |
 
+Animated GIF and WebP inputs are converted using only their first frame. The CLI warns for multi-frame inputs during both conversion and `--dry-run`; `--json` includes the warning in the plan.
+
 ### PDF to Word
 
 ```bash
@@ -77,7 +79,6 @@ library conversion metadata describes detected tables and image-only pages.
 Library callers can set `pages` and `dpi` (72–300). Limits are 50 pages, 25 million
 pixels per page, 125 million pixels per job, 50,000 text items and Word's maximum
 page dimension of 22 inches. Existing destination files survive conversion failure.
-Animated GIF and WebP inputs are converted using only their first frame. The CLI warns for multi-frame inputs during both conversion and `--dry-run`; `--json` includes the warning in the plan.
 
 ## Commands
 
