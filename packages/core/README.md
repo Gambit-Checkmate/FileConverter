@@ -80,6 +80,8 @@ page dimension of 22 inches. Existing destination files survive conversion failu
 
 ## Commands
 
+`convert`, `ocr`, and `pdf` exit with status 1 if any conversion job fails, including partial batch failures. Successful runs and `convert --dry-run` exit with status 0. `convert --json` still writes the complete result to stdout before exiting, so scripts can inspect both the report and the exit status.
+
 ### `convert` — File conversion
 
 ```bash
