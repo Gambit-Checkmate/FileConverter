@@ -24,6 +24,7 @@ interface ConversionPlan {
   outputFormat: string;
   supported: boolean;
   reason?: string;
+  warning?: string;
 }
 interface ConversionResult {
   success: boolean;
@@ -48,6 +49,7 @@ interface ConversionResult {
     error?: string;
     duration?: number;
     retryCount?: number;
+    warning?: string;
   }>;
 }
 interface ConversionProgress {
